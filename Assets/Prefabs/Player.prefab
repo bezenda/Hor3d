@@ -13,6 +13,8 @@ GameObject:
   - component: {fileID: 403902962502701820}
   - component: {fileID: 7815415486316409278}
   - component: {fileID: 5453251361157056707}
+  - component: {fileID: 8805465527385135756}
+  - component: {fileID: 4786313277367656463}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -138,6 +140,38 @@ MonoBehaviour:
   minPitch: -85
   maxPitch: 85
   manageCursorLock: 1
+--- !u!114 &8805465527385135756
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1404143419113357116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13051181a3546384b8abb0aff8a8211f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AshenWoods.Player.PlayerKeyHolder
+  keys: []
+--- !u!114 &4786313277367656463
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1404143419113357116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 563d8ee2d19bdf44e989a48baa954f8a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AshenWoods.Interaction.PlayerInteractor
+  viewCamera: {fileID: 5351498443174759707}
+  input: {fileID: 403902962502701820}
+  keyHolder: {fileID: 8805465527385135756}
+  reach: 2.2
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 4294967231
 --- !u!1 &3418154680957393344
 GameObject:
   m_ObjectHideFlags: 0
