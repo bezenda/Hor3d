@@ -15,6 +15,8 @@ GameObject:
   - component: {fileID: 5453251361157056707}
   - component: {fileID: 8805465527385135756}
   - component: {fileID: 4786313277367656463}
+  - component: {fileID: 1547062446767890301}
+  - component: {fileID: 6616045597851122794}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -172,6 +174,43 @@ MonoBehaviour:
   obstacleMask:
     serializedVersion: 2
     m_Bits: 4294967231
+--- !u!114 &1547062446767890301
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1404143419113357116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2dfa48a7265f06b449abf915225a3e06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AshenWoods.Player.PlayerHidingController
+  motor: {fileID: 7815415486316409278}
+  look: {fileID: 5453251361157056707}
+  controller: {fileID: 6791755937416799009}
+  interactor: {fileID: 4786313277367656463}
+--- !u!114 &6616045597851122794
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1404143419113357116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb1f4c93848e8fa4192907177e0e6990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AshenWoods.Player.PlayerEnemyTarget
+  aimPoint: {fileID: 2202514971097660722}
+  hiding: {fileID: 1547062446767890301}
+  motor: {fileID: 7815415486316409278}
+  look: {fileID: 5453251361157056707}
+  input: {fileID: 403902962502701820}
+  interactor: {fileID: 4786313277367656463}
+  aimHeight: 1.5
+  caughtLockSeconds: 1.2
+  caughtMessage: Caught!
 --- !u!1 &3418154680957393344
 GameObject:
   m_ObjectHideFlags: 0
