@@ -100,6 +100,23 @@ namespace AshenWoods.Player
             PlayerInputReader.ApplyCursorLock(locked);
         }
 
+        /// <summary>
+        /// Jumps the view to a rotation and levels the pitch, without the look smoothing
+        /// dragging it back (hiding spots, respawns, teleporters).
+        /// </summary>
+        public void SnapToRotation(Quaternion rotation)
+        {
+            _yaw = rotation.eulerAngles.y;
+            _pitch = 0f;
+
+            transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
+
+            if (cameraPivot != null)
+            {
+                cameraPivot.localRotation = Quaternion.Euler(0f, 0f, 0f);
+            }
+        }
+
         private void SyncToCurrentRotation()
         {
             _yaw = transform.eulerAngles.y;

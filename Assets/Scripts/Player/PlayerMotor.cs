@@ -138,6 +138,30 @@ namespace AshenWoods.Player
             }
         }
 
+        /// <summary>
+        /// Moves the player without physics fighting it (respawn, teleporters, hiding spots).
+        /// Velocity and step progress are cleared, so the player does not keep sliding or
+        /// fire a footstep the moment they arrive.
+        /// </summary>
+        public void Teleport(Vector3 position, Quaternion rotation)
+        {
+            _velocity = Vector3.zero;
+            _verticalVelocity = 0f;
+            _strideProgress = 0f;
+
+            if (controller == null)
+            {
+                transform.SetPositionAndRotation(position, rotation);
+                return;
+            }
+
+            // A CharacterController only accepts a transform write while it is switched off.
+            bool controllerWasEnabled = controller.enabled;
+            controller.enabled = false;
+            transform.SetPositionAndRotation(position, rotation);
+            controller.enabled = controllerWasEnabled;
+        }
+
         private void Update()
         {
             if (input == null || controller == null)

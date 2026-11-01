@@ -46,6 +46,28 @@ namespace AshenWoods.Interaction
         public event Action<string> PromptChanged;
         public event Action<string> FeedbackRaised;
 
+        private IInteractable forcedTarget;
+
+        /// <summary>
+        /// Pins the current target instead of casting a ray. A hiding spot uses this while
+        /// the player is inside it: the interaction stays bound to the spot so the player
+        /// can always get out, even with the camera buried in a wardrobe wall.
+        /// Pass null to go back to raycasting.
+        /// </summary>
+        public void SetTargetOverride(IInteractable target)
+        {
+            forcedTarget = target;
+        }
+
+        /// <summary>Shows a transient message through the same channel as interaction feedback.</summary>
+        public void ShowFeedback(string message)
+        {
+            if (!string.IsNullOrEmpty(message))
+            {
+                FeedbackRaised?.Invoke(message);
+            }
+        }
+
         private void Awake()
         {
             if (viewCamera == null)
@@ -87,7 +109,7 @@ namespace AshenWoods.Interaction
                 return;
             }
 
-            IInteractable target = FindTarget();
+            IInteractable target = forcedTarget != null ? forcedTarget : FindTarget();
 
             string prompt = target != null && target.IsAvailable ? target.GetPrompt(this) : null;
             SetTarget(target, prompt);

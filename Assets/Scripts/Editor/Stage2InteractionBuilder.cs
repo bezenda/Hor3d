@@ -65,7 +65,9 @@ namespace AshenWoods.EditorTools
                 return;
             }
 
-            int added = Stage1PlaygroundBuilder.EnsurePlaygroundInActiveScene() + EnsureStage2Pieces();
+            int added = Stage1PlaygroundBuilder.EnsurePlaygroundInActiveScene()
+                        + EnsureStage2Pieces()
+                        + Stage3EnemyBuilder.EnsureStage3Pieces();
 
             if (added > 0)
             {
