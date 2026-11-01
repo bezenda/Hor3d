@@ -68,6 +68,24 @@ namespace AshenWoods.EditorTools
         /// <summary>Indices into <see cref="NavNodePositions"/> used for the patrol loop, in order.</summary>
         private static readonly int[] PatrolNodeIndices = { 0, 2, 4, 6, 7 };
 
+        [MenuItem("Ashen Woods/Diagnostics/Log Enemy Navigation Graph", false, 90)]
+        private static void LogNavigationGraph()
+        {
+            EnemyNavigation navigation = Object.FindAnyObjectByType<EnemyNavigation>();
+
+            if (navigation == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "No enemy navigation in this scene",
+                    "Open AshWoods_Stage1_Playground, add the Stage 3 pieces, then run this again.",
+                    "OK");
+                return;
+            }
+
+            navigation.RebuildGraph();
+            Debug.Log(navigation.DescribeGraph(), navigation);
+        }
+
         [MenuItem("Ashen Woods/Stage 3 - Add Enemy And Hiding Spots To Open Scene", false, 4)]
         private static void AddStage3Menu()
         {

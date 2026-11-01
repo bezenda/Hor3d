@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using AshenWoods.Interaction;
 
 namespace AshenWoods.Enemy
 {
@@ -76,6 +77,18 @@ namespace AshenWoods.Enemy
         [Tooltip("Seconds between route re-plans while chasing.")]
         [SerializeField, Min(0.05f)] private float repathSeconds = 0.3f;
 
+        [Tooltip("How far the target must move before a chase re-plans. Re-planning every tick " +
+                 "makes the route flicker and the enemy turn on the spot.")]
+        [SerializeField, Min(0.1f)] private float repathMoveTolerance = 0.5f;
+
+        [Header("Doors")]
+        [Tooltip("While chasing, push open a closed unlocked door that is in the way. Turn this off " +
+                 "to make closing a door a permanent escape.")]
+        [SerializeField] private bool opensDoors = true;
+
+        [Tooltip("How far ahead the enemy reaches for a door, in metres.")]
+        [SerializeField, Min(0.2f)] private float doorReach = 1.1f;
+
         [Header("Search")]
         [Tooltip("Seconds spent looking around the last known position before giving up.")]
         [SerializeField, Min(0f)] private float searchSeconds = 6f;
@@ -112,6 +125,7 @@ namespace AshenWoods.Enemy
         private float repathRemaining;
         private Vector3 lastKnownPoint;
         private Vector3 catchPoint;
+        private Vector3 lastPlannedDestination;
 
         private void Awake()
         {
@@ -271,17 +285,26 @@ namespace AshenWoods.Enemy
             }
 
             repathRemaining -= deltaTime;
-            if (repathRemaining <= 0f)
+
+            // When sight is broken, hunt the last place the target was seen rather than
+            // its real position - that is what makes a hiding spot work.
+            Vector3 destination = CanSeeTarget ? target.TargetRoot.position : lastKnownPoint;
+            bool destinationMoved =
+                (destination - lastPlannedDestination).sqrMagnitude
+                > repathMoveTolerance * repathMoveTolerance;
+
+            // Re-plan only when it changes something: no route at all, or the target moved.
+            // Planning every tick used to make the enemy turn round to touch the waypoint
+            // behind it instead of running forwards.
+            if (repathRemaining <= 0f && (!navigation.HasPath || destinationMoved))
             {
                 repathRemaining = repathSeconds;
-
-                // When sight is broken, hunt the last place the target was seen rather than
-                // its real position - that is what makes a hiding spot work.
-                Vector3 destination = CanSeeTarget ? target.TargetRoot.position : lastKnownPoint;
+                lastPlannedDestination = destination;
                 RequestDestination(destination);
             }
 
             navigation.MoveAlongPath(chaseSpeed, deltaTime);
+            TryOpenDoorAhead();
 
             if (CanSeeTarget)
             {
@@ -323,6 +346,7 @@ namespace AshenWoods.Enemy
             }
 
             navigation.MoveAlongPath(searchSpeed, deltaTime);
+            TryOpenDoorAhead();
 
             if (navigation.HasArrived)
             {
@@ -372,6 +396,7 @@ namespace AshenWoods.Enemy
             SetState(EnemyState.Chase);
             unseenTimer = 0f;
             repathRemaining = 0f;
+            lastPlannedDestination = new Vector3(9999f, 9999f, 9999f);
         }
 
         private void EnterSearch()
@@ -427,6 +452,40 @@ namespace AshenWoods.Enemy
         private bool RequestDestination(Vector3 worldPosition)
         {
             return navigation != null && navigation.SetDestination(worldPosition);
+        }
+
+        /// <summary>
+        /// Opens a closed, unlocked door that is directly ahead. Without this the enemy stops
+        /// at a door it cannot open and looks broken rather than blocked.
+        /// </summary>
+        private void TryOpenDoorAhead()
+        {
+            if (!opensDoors)
+            {
+                return;
+            }
+
+            Vector3 origin = transform.position + Vector3.up * 1f;
+
+            if (!Physics.Raycast(
+                    origin, transform.forward, out RaycastHit hit, doorReach, ~0,
+                    QueryTriggerInteraction.Ignore))
+            {
+                return;
+            }
+
+            Door door = hit.collider.GetComponentInParent<Door>();
+            if (door == null || door.State != Door.DoorState.Closed || door.IsLocked)
+            {
+                return;
+            }
+
+            door.Interact(null);
+
+            if (logStateChanges)
+            {
+                Debug.Log($"[Enemy] Forced {door.name} open to keep chasing.", this);
+            }
         }
 
         private int NearestPatrolIndex()
