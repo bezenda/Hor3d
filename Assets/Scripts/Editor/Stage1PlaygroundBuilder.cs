@@ -22,10 +22,10 @@ namespace AshenWoods.EditorTools
     /// </summary>
     public static class Stage1PlaygroundBuilder
     {
-        private const string ScenePath = "Assets/Scenes/AshWoods_Stage1_Playground.unity";
+        internal const string ScenePath = "Assets/Scenes/AshWoods_Stage1_Playground.unity";
         private const string MaterialFolder = "Assets/Materials";
-        private const string PrefabFolder = "Assets/Prefabs";
-        private const string PlayerPrefabPath = PrefabFolder + "/Player.prefab";
+        internal const string PrefabFolder = "Assets/Prefabs";
+        internal const string PlayerPrefabPath = PrefabFolder + "/Player.prefab";
 
         private const string EnvironmentRootName = "Environment";
         private const string LightingRootName = "Lighting";
@@ -95,7 +95,8 @@ namespace AshenWoods.EditorTools
                 return;
             }
 
-            int addedCount = EnsurePlaygroundInActiveScene();
+            // Stage 2 pieces are part of the same playground, so one menu item completes it.
+            int addedCount = EnsurePlaygroundInActiveScene() + Stage2InteractionBuilder.EnsureStage2Pieces();
 
             if (addedCount > 0)
             {
@@ -113,7 +114,7 @@ namespace AshenWoods.EditorTools
         /// Adds only the pieces that are absent. Existing objects are never modified or removed.
         /// </summary>
         /// <returns>How many top-level pieces were added.</returns>
-        private static int EnsurePlaygroundInActiveScene()
+        internal static int EnsurePlaygroundInActiveScene()
         {
             Material floorMaterial = GetOrCreateMaterial("Placeholder_Floor", new Color(0.20f, 0.16f, 0.12f));
             Material wallMaterial = GetOrCreateMaterial("Placeholder_Wall", new Color(0.33f, 0.31f, 0.28f));
@@ -413,7 +414,7 @@ namespace AshenWoods.EditorTools
             light.shadows = LightShadows.Soft;
         }
 
-        private static GameObject CreateBox(
+        internal static GameObject CreateBox(
             string name, Transform parent, Vector3 position, Vector3 size, Material material)
         {
             GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -432,7 +433,7 @@ namespace AshenWoods.EditorTools
             return box;
         }
 
-        private static Material GetOrCreateMaterial(string name, Color color)
+        internal static Material GetOrCreateMaterial(string name, Color color)
         {
             EnsureFolder("Assets", "Materials");
 
@@ -488,7 +489,7 @@ namespace AshenWoods.EditorTools
             EditorUtility.SetDirty(material);
         }
 
-        private static void EnsureFolder(string parentFolder, string folderName)
+        internal static void EnsureFolder(string parentFolder, string folderName)
         {
             if (!AssetDatabase.IsValidFolder(parentFolder + "/" + folderName))
             {
@@ -496,7 +497,7 @@ namespace AshenWoods.EditorTools
             }
         }
 
-        private static void SetObjectReference(Object target, string fieldName, Object value)
+        internal static void SetObjectReference(Object target, string fieldName, Object value)
         {
             SerializedObject serialized = new SerializedObject(target);
             SerializedProperty property = serialized.FindProperty(fieldName);
@@ -512,7 +513,7 @@ namespace AshenWoods.EditorTools
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private static void SetLayerMask(Object target, string fieldName, int maskValue)
+        internal static void SetLayerMask(Object target, string fieldName, int maskValue)
         {
             SerializedObject serialized = new SerializedObject(target);
             SerializedProperty property = serialized.FindProperty(fieldName);

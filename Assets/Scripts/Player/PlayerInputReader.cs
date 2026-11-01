@@ -33,6 +33,7 @@ namespace AshenWoods.Player
         public bool CrouchHeld { get; private set; }
         public bool CrouchPressed { get; private set; }
         public bool JumpPressed { get; private set; }
+        public bool InteractPressed { get; private set; }
 
         /// <summary>
         /// When false the reader reports no intent at all. Game state (pause, caught,
@@ -87,6 +88,7 @@ namespace AshenWoods.Player
             CrouchHeld = false;
             CrouchPressed = false;
             JumpPressed = false;
+            InteractPressed = false;
 
             ReadKeyboard(Keyboard.current);
             ReadGamepad(Gamepad.current);
@@ -113,6 +115,7 @@ namespace AshenWoods.Player
             CrouchHeld |= keyboard.cKey.isPressed;
             CrouchPressed |= keyboard.cKey.wasPressedThisFrame;
             JumpPressed |= keyboard.spaceKey.wasPressedThisFrame;
+            InteractPressed |= keyboard.eKey.wasPressedThisFrame;
         }
 
         private void ReadGamepad(Gamepad gamepad)
@@ -132,6 +135,7 @@ namespace AshenWoods.Player
             CrouchHeld |= gamepad.buttonEast.isPressed;
             CrouchPressed |= gamepad.buttonEast.wasPressedThisFrame;
             JumpPressed |= gamepad.buttonSouth.wasPressedThisFrame;
+            InteractPressed |= gamepad.buttonWest.wasPressedThisFrame;
         }
 
         private void ReadLook(Gamepad gamepad, Mouse mouse)
@@ -141,6 +145,7 @@ namespace AshenWoods.Player
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
             {
                 Look += mouse.delta.ReadValue();
+                InteractPressed |= mouse.leftButton.wasPressedThisFrame;
             }
 
             if (gamepad != null)
@@ -163,6 +168,7 @@ namespace AshenWoods.Player
             CrouchHeld = false;
             CrouchPressed = false;
             JumpPressed = false;
+            InteractPressed = false;
         }
     }
 }
