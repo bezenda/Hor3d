@@ -61,8 +61,13 @@ namespace AshenWoods.EditorTools
             new Vector3(1.3f, 0f, -3.0f),   // 5: north-centre
             new Vector3(2.9f, 0f, -2.6f),   // 6: north-east, outside the closet
             new Vector3(2.4f, 0f, 0.9f),    // 7: east, in front of the ramp
-            new Vector3(1.9f, 0f, 4.7f),    // 8: corridor mouth
-            new Vector3(1.8f, 0f, 6.8f)     // 9: corridor end
+            new Vector3(1.9f, 0f, 4.7f),      // 8: corridor mouth
+            new Vector3(1.8f, 0f, 6.8f),      // 9: corridor end
+
+            // Standing on the top step is height, not a hiding place: without a node up here
+            // the enemy can only reach the foot of the stairs and a target on them is safe.
+            // The y is the top of Step_4, so the walkability rays start above the treads.
+            new Vector3(-3.4f, 0.72f, 3.05f)  // 10: on top of the west steps
         };
 
         /// <summary>Indices into <see cref="NavNodePositions"/> used for the patrol loop, in order.</summary>
