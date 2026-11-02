@@ -26,7 +26,7 @@ The full design brief this project is built against is at the bottom of this fil
 
 Note: the brief's stages 2 and 3 are merged here (interaction + items + locks are all
 Stage 2 in this repo), so this project's numbering is one behind the brief after Stage 3.
-Use the table above, not the brief numbers, when resuming work.
+Use the table above, not the brief numbers, when resuming work..
 
 ## How to run a stage
 
