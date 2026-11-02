@@ -22,7 +22,7 @@ namespace AshenWoods.World
         [Header("Carry Distance")]
         [Tooltip("How far a noise at loudness 1 travels, in metres. Every noise radius is a " +
                  "fraction of this: loudness 0.45 travels about 45% as far.")]
-        [SerializeField, Min(1f)] private float maxRadius = 18f;
+        [SerializeField, Min(1f)] private float maxRadius = 16f;
 
         [Tooltip("Anything quieter than this is dropped, so tiny sounds do not wake the level.")]
         [SerializeField, Range(0f, 0.5f)] private float minimumLoudness = 0.05f;

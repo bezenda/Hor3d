@@ -44,7 +44,7 @@ namespace AshenWoods.Interaction
 
         [Header("Noise")]
         [Tooltip("Loudness (0-1) reported when the door starts to swing. 0 makes it silent.")]
-        [SerializeField, Range(0f, 1f)] private float openNoiseLoudness = 0.5f;
+        [SerializeField, Range(0f, 1f)] private float openNoiseLoudness = 0.69f;
 
         [Tooltip("Closing the door also squeaks, a little quieter than opening it.")]
         [SerializeField] private bool noisyWhenClosing = true;

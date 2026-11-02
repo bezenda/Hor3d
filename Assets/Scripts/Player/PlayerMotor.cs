@@ -80,9 +80,9 @@ namespace AshenWoods.Player
         [SerializeField, Min(0f)] private float minLandingImpactSpeed = 2.5f;
 
         [Tooltip("Loudness (0-1) reported with each footstep sound event. Consumed in Stage 5.")]
-        [SerializeField, Range(0f, 1f)] private float walkLoudness = 0.45f;
+        [SerializeField, Range(0f, 1f)] private float walkLoudness = 0.56f;
         [SerializeField, Range(0f, 1f)] private float sprintLoudness = 1f;
-        [SerializeField, Range(0f, 1f)] private float crouchLoudness = 0.12f;
+        [SerializeField, Range(0f, 1f)] private float crouchLoudness = 0.16f;
         [SerializeField, Range(0f, 1f)] private float landingLoudness = 0.8f;
 
         [Tooltip("Logs every footstep event to the Console so the hook can be verified without audio.")]

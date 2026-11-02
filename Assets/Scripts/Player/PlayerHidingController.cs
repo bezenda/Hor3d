@@ -24,10 +24,10 @@ namespace AshenWoods.Player
 
         [Header("Noise")]
         [Tooltip("Loudness reported when climbing into a hiding place. 0 makes it silent.")]
-        [SerializeField, Range(0f, 1f)] private float enterNoiseLoudness = 0.3f;
+        [SerializeField, Range(0f, 1f)] private float enterNoiseLoudness = 0.25f;
 
         [Tooltip("Loudness reported when climbing back out.")]
-        [SerializeField, Range(0f, 1f)] private float leaveNoiseLoudness = 0.2f;
+        [SerializeField, Range(0f, 1f)] private float leaveNoiseLoudness = 0.19f;
 
         /// <summary>True while the player is inside a hiding spot.</summary>
         public bool IsHidden { get; private set; }

@@ -29,7 +29,7 @@ namespace AshenWoods.Interaction
 
         [Header("Noise")]
         [Tooltip("Loudness (0-1) reported when the key is picked up. 0 makes it silent.")]
-        [SerializeField, Range(0f, 1f)] private float pickupNoiseLoudness = 0.25f;
+        [SerializeField, Range(0f, 1f)] private float pickupNoiseLoudness = 0.31f;
 
         private Vector3 visualStartPosition;
 

@@ -78,6 +78,13 @@ behaviour. It is wiped when the VM is restored; rebuild it if needed:
 - Enemy layer checks exclude the player layer so the player's body never breaks the graph.
 - Physics queries inside a `CharacterController` capsule ignore the capsule itself; that is
   why sight rays start at the eye, inside the enemy.
+- Stage 5 numbers are tuned to this level's 12.8 m diagonal (table in `README.md`). Changing
+  the constants in code does **not** update existing scene components - serialized values
+  win - so use `Stage 5 - Apply Tuned Stealth Values` after editing them, and read the
+  result back with `Diagnostics/Log Stealth Ranges`.
+- Private serialized fields are written from editor code through `SetFloat` /
+  `SetObjectReference` / `SetLayerMask` (SerializedObject). Plain assignment is silently
+  discarded by Unity.
 
 ## Git
 

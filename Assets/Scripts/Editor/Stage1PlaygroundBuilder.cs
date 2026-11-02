@@ -20,7 +20,7 @@ namespace AshenWoods.EditorTools
     ///   Ashen Woods > Stage 1 - Create Playground Scene      (only when the scene does not exist)
     ///   Ashen Woods > Stage 1 - Add Missing Pieces To Open Scene   (safe to run any time)
     /// </summary>
-    public static class Stage1PlaygroundBuilder
+    public static partial class Stage1PlaygroundBuilder
     {
         internal const string ScenePath = "Assets/Scenes/AshWoods_Stage1_Playground.unity";
         private const string MaterialFolder = "Assets/Materials";

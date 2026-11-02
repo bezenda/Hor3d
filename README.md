@@ -61,6 +61,33 @@ never save it for you.
 | Esc | Pause menu |
 | Tab | Satchel |
 
+## Sound tuning
+
+The Stage 5 numbers are chosen against this level's real distances: the room interior is
+10 x 8 m (12.8 m diagonal), the corridor mouth is 11.7 m from the closet door and the enemy
+spawn is 10.1 m from that mouth. With a 16 m maximum noise radius and 14 m of hearing:
+
+| Source | Loudness | Open air | Behind one wall |
+| --- | --- | --- | --- |
+| Crouch step | 0.16 | 2.6 m | 1.9 m |
+| Walk step | 0.56 | 9.0 m | 6.7 m |
+| Sprint step | 1.00 | 14 m (capped) | 10.5 m |
+| Landing | 0.80 | 12.8 m | 9.6 m |
+| Door | 0.69 | 11.0 m | 8.3 m |
+| Key pickup | 0.31 | 5.0 m | 3.7 m |
+| Hiding in / out | 0.25 / 0.19 | 4.0 / 3.0 m | 3.0 / 2.3 m |
+
+Applying them to a scene is explicit, so re-running a stage builder never overwrites your
+own tweaks:
+
+```
+Ashen Woods > Stage 5 - Apply Tuned Stealth Values
+Ashen Woods > Diagnostics/Log Stealth Ranges
+```
+
+The second item prints the table above from the scene's live values and the largest gap
+between two waypoints, so a mismatch between the numbers and the layout is visible at once.
+
 ## Repository layout
 
 ```
