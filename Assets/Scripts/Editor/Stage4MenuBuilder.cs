@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using AshenWoods.GameManagement;
@@ -27,10 +28,14 @@ namespace AshenWoods.EditorTools
         private const string CanvasName = "MenuCanvas";
         private const string PausePanelName = "PausePanel";
         private const string InventoryPanelName = "InventoryPanel";
+        private const string EventSystemName = "EventSystem";
+        private const string ResumeButtonName = "ResumeButton";
+        private const string CloseButtonName = "CloseButton";
 
         private static readonly Color OverlayColor = new Color(0.02f, 0.02f, 0.025f, 0.8f);
         private static readonly Color TextColor = new Color(0.93f, 0.9f, 0.85f);
         private static readonly Color DimTextColor = new Color(0.62f, 0.6f, 0.56f);
+        private static readonly Color ButtonColor = new Color(0.17f, 0.16f, 0.15f, 0.96f);
 
         [MenuItem("Ashen Woods/Stage 4 - Add Pause Menu And Inventory To Open Scene", false, 5)]
         private static void AddStage4Menu()
@@ -92,6 +97,7 @@ namespace AshenWoods.EditorTools
                 added++;
             }
 
+            added += EnsureEventSystem(uiRoot.transform);
             added += EnsurePausePanel(canvasObject.transform);
             added += EnsureInventoryPanel(canvasObject.transform);
 
@@ -101,24 +107,53 @@ namespace AshenWoods.EditorTools
             return added;
         }
 
+        /// <summary>
+        /// uGUI buttons do nothing without an EventSystem. The project has "Both" input
+        /// handling enabled, so the classic input module drives the pointer.
+        /// </summary>
+        private static int EnsureEventSystem(Transform uiRoot)
+        {
+            if (Object.FindAnyObjectByType<EventSystem>() != null)
+            {
+                return 0;
+            }
+
+            GameObject eventSystem = new GameObject(EventSystemName, typeof(EventSystem), typeof(StandaloneInputModule));
+            eventSystem.transform.SetParent(uiRoot, false);
+
+            Debug.Log("Added an EventSystem. If button clicks do nothing, check Project Settings > " +
+                      "Player > Active Input Handling is set to 'Both'.");
+            return 1;
+        }
+
         private static int EnsurePausePanel(Transform canvas)
         {
             Transform existing = canvas.Find(PausePanelName);
             if (existing != null)
             {
+                // The panel may predate the buttons. Add only what is missing.
+                if (existing.Find(ResumeButtonName) == null)
+                {
+                    CreateButton(existing, ResumeButtonName, "Resume", new Vector2(0f, 40f), new Vector2(360f, 70f));
+                    return 1;
+                }
+
                 return 0;
             }
 
             GameObject panel = CreateOverlay(canvas, PausePanelName);
 
-            CreateText(panel.transform, "Title", "PAUSED", new Vector2(0f, 170f), new Vector2(900f, 120f), 72, TextColor);
+            CreateText(panel.transform, "Title", "PAUSED", new Vector2(0f, 210f), new Vector2(900f, 120f), 72, TextColor);
             CreateText(panel.transform, "Subtitle", "The woods are holding their breath.",
-                new Vector2(0f, 90f), new Vector2(900f, 50f), 28, DimTextColor);
+                new Vector2(0f, 140f), new Vector2(900f, 50f), 28, DimTextColor);
+
+            CreateButton(panel.transform, ResumeButtonName, "Resume", new Vector2(0f, 40f), new Vector2(360f, 70f));
+
             CreateText(panel.transform, "Hint", "Esc  -  Resume              Tab  -  Satchel",
-                new Vector2(0f, -140f), new Vector2(900f, 50f), 30, TextColor);
+                new Vector2(0f, -70f), new Vector2(900f, 50f), 26, DimTextColor);
             CreateText(panel.transform, "Controls",
                 "WASD  move      Shift  sprint      C  crouch      E  use      Mouse  look",
-                new Vector2(0f, -215f), new Vector2(1200f, 50f), 24, DimTextColor);
+                new Vector2(0f, -140f), new Vector2(1200f, 50f), 24, DimTextColor);
 
             panel.SetActive(false);
             return 1;
@@ -129,15 +164,24 @@ namespace AshenWoods.EditorTools
             Transform existing = canvas.Find(InventoryPanelName);
             if (existing != null)
             {
+                if (existing.Find(CloseButtonName) == null)
+                {
+                    CreateButton(existing, CloseButtonName, "Close", new Vector2(0f, -170f), new Vector2(320f, 64f));
+                    return 1;
+                }
+
                 return 0;
             }
 
             GameObject panel = CreateOverlay(canvas, InventoryPanelName);
 
             CreateText(panel.transform, "Title", "SATCHEL", new Vector2(0f, 250f), new Vector2(900f, 90f), 56, TextColor);
-            CreateText(panel.transform, "Heading", "KEYS", new Vector2(0f, 165f), new Vector2(900f, 40f), 26, DimTextColor);
+            CreateText(panel.transform, "Heading", "KEYS", new Vector2(0f, 170f), new Vector2(900f, 40f), 26, DimTextColor);
             Text listText = CreateText(panel.transform, "KeyList", string.Empty,
-                new Vector2(0f, -10f), new Vector2(760f, 300f), 32, TextColor);
+                new Vector2(0f, 10f), new Vector2(760f, 300f), 32, TextColor);
+
+            CreateButton(panel.transform, CloseButtonName, "Close", new Vector2(0f, -170f), new Vector2(320f, 64f));
+
             CreateText(panel.transform, "Hint", "Tab  -  Close              Esc  -  Pause menu",
                 new Vector2(0f, -250f), new Vector2(900f, 50f), 26, DimTextColor);
 
@@ -166,6 +210,12 @@ namespace AshenWoods.EditorTools
             Stage1PlaygroundBuilder.SetObjectReference(menu, "inventory",
                 inventoryPanel != null ? inventoryPanel.GetComponent<InventoryUI>() : null);
 
+            // Clicking resume and close does the same thing as their keys.
+            Stage1PlaygroundBuilder.SetObjectReference(menu, "resumeButton",
+                FindButton(pausePanel, ResumeButtonName));
+            Stage1PlaygroundBuilder.SetObjectReference(menu, "closeButton",
+                FindButton(inventoryPanel, CloseButtonName));
+
             PlayerInputReader input = Object.FindAnyObjectByType<PlayerInputReader>();
             PlayerInteractor interactor = Object.FindAnyObjectByType<PlayerInteractor>();
             PlayerKeyHolder keyHolder = Object.FindAnyObjectByType<PlayerKeyHolder>();
@@ -181,6 +231,17 @@ namespace AshenWoods.EditorTools
             }
         }
 
+        private static Button FindButton(Transform panel, string buttonName)
+        {
+            if (panel == null)
+            {
+                return null;
+            }
+
+            Transform button = panel.Find(buttonName);
+            return button != null ? button.GetComponent<Button>() : null;
+        }
+
         /// <summary>Full-screen dark panel that dims the game behind the menu.</summary>
         private static GameObject CreateOverlay(Transform parent, string name)
         {
@@ -189,7 +250,9 @@ namespace AshenWoods.EditorTools
 
             Image background = panel.AddComponent<Image>();
             background.color = OverlayColor;
-            background.raycastTarget = false; // There are no buttons to click yet.
+
+            // The dim layer must not eat clicks meant for the buttons on top of it.
+            background.raycastTarget = false;
 
             RectTransform rect = background.rectTransform;
             rect.anchorMin = Vector2.zero;
@@ -198,6 +261,34 @@ namespace AshenWoods.EditorTools
             rect.offsetMax = Vector2.zero;
 
             return panel;
+        }
+
+        /// <summary>
+        /// A clickable button: a tinted Image with a label child. The image is the raycast
+        /// target, the label is not, so the whole plate is clickable.
+        /// </summary>
+        private static Button CreateButton(Transform parent, string name, string label, Vector2 anchoredPosition, Vector2 size)
+        {
+            GameObject buttonObject = new GameObject(name, typeof(RectTransform));
+            buttonObject.transform.SetParent(parent, false);
+
+            Image background = buttonObject.AddComponent<Image>();
+            background.color = ButtonColor;
+            background.raycastTarget = true;
+
+            RectTransform rect = background.rectTransform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = anchoredPosition;
+            rect.sizeDelta = size;
+
+            Button button = buttonObject.AddComponent<Button>();
+            button.targetGraphic = background;
+
+            CreateText(buttonObject.transform, "Label", label, Vector2.zero, size, 30, TextColor);
+
+            return button;
         }
 
         private static Text CreateText(

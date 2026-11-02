@@ -1,5 +1,7 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using AshenWoods.Interaction;
 using AshenWoods.Player;
 using AshenWoods.UI;
@@ -47,6 +49,13 @@ namespace AshenWoods.GameManagement
 
         [SerializeField] private InventoryUI inventory;
 
+        [Header("Mouse")]
+        [Tooltip("Clicked to close the pause screen. Optional - Esc does the same thing.")]
+        [SerializeField] private Button resumeButton;
+
+        [Tooltip("Clicked to close the satchel. Optional - Tab does the same thing.")]
+        [SerializeField] private Button closeButton;
+
         [Header("Player")]
         [SerializeField] private PlayerInputReader input;
         [SerializeField] private PlayerInteractor interactor;
@@ -86,6 +95,9 @@ namespace AshenWoods.GameManagement
             {
                 keyHolder = Object.FindAnyObjectByType<PlayerKeyHolder>();
             }
+
+            WireButton(resumeButton);
+            WireButton(closeButton);
 
             SetPanelsVisible(GameScreen.None);
         }
@@ -165,6 +177,9 @@ namespace AshenWoods.GameManagement
                 inventory.Refresh();
             }
 
+            // Selecting the button means Enter or Space also closes the screen, not just a click.
+            SelectDefaultButton(screen);
+
             if (logScreenChanges)
             {
                 Debug.Log($"[Menu] {screen} screen open, game time stopped.", this);
@@ -178,6 +193,7 @@ namespace AshenWoods.GameManagement
 
             CurrentScreen = GameScreen.None;
             SetPanelsVisible(GameScreen.None);
+            ClearSelection();
 
             if (frozen)
             {
@@ -233,6 +249,40 @@ namespace AshenWoods.GameManagement
             if (input == null || inputWasEnabled)
             {
                 PlayerInputReader.ApplyCursorLock(true);
+            }
+        }
+
+        /// <summary>
+        /// Points a button at <see cref="Close"/>. Removing first means a re-wire (running the
+        /// builder again, or a scene reload) can never leave the handler attached twice.
+        /// </summary>
+        private void WireButton(Button button)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            button.onClick.RemoveListener(Close);
+            button.onClick.AddListener(Close);
+        }
+
+        private void SelectDefaultButton(GameScreen screen)
+        {
+            Button button = screen == GameScreen.Paused ? resumeButton : closeButton;
+            if (button == null || EventSystem.current == null)
+            {
+                return;
+            }
+
+            EventSystem.current.SetSelectedGameObject(button.gameObject);
+        }
+
+        private void ClearSelection()
+        {
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
             }
         }
 
