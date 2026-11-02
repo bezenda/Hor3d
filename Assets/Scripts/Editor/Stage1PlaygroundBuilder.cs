@@ -98,7 +98,8 @@ namespace AshenWoods.EditorTools
             // Every stage is part of the same playground, so one menu item completes it.
             int addedCount = EnsurePlaygroundInActiveScene()
                              + Stage2InteractionBuilder.EnsureStage2Pieces()
-                             + Stage3EnemyBuilder.EnsureStage3Pieces();
+                             + Stage3EnemyBuilder.EnsureStage3Pieces()
+                             + Stage6ObjectiveBuilder.EnsureStage6Pieces();
 
             if (addedCount > 0)
             {

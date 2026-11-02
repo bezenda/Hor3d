@@ -27,7 +27,7 @@ bitten previous contributors.
 | 3 | Enemy prefab, waypoint graph, vision, patrol/chase/search, hiding spots | `Stage3EnemyBuilder` |
 | 4 | Pause menu, satchel, EventSystem, buttons | `Stage4MenuBuilder` |
 | 5 | Noise bus, player noise, enemy hearing, Investigate state | `Stage5NoiseBuilder` |
-| 6 | (planned) objectives, puzzle, escape | — |
+| 6 | Objective chain, breaker puzzle, front-door exit, objective HUD | `Stage6ObjectiveBuilder` |
 | 7 | (planned) death, restart, completed screen | — |
 
 Each builder exposes `EnsureStageNPieces()` and a `MenuItem` that validates the open scene
@@ -45,6 +45,13 @@ first. `Stage1PlaygroundBuilder` also holds the shared helpers: `SetObjectRefere
 - `NoiseSystem` is a scene component with a static `Emit(...)`. Emitters (footsteps, doors,
   key pickups, hiding) call it; listeners subscribe to the instance event. No system means
   no crash: `Emit` returns false and warns once.
+- `ObjectiveManager` owns the ordered chain and *polls* the current step (key held, door
+  unlocked, puzzle solved, exit used), so pickups and doors know nothing about objectives.
+  `Report(id)` exists only for steps nothing can poll, and it refuses an id that is not the
+  current step: the chain cannot be finished out of order.
+- `PuzzleController` owns the solve rule over a list of `PuzzleSwitch`; a switch only flips
+  itself and reports. `EscapeExit` is a separate interactable (not a `Door`) because the
+  corridor's end wall is solid; it gates on the puzzle being solved.
 - `GameMenuController` freezes with `Time.timeScale = 0` and disables input/interaction,
   restoring the *previous* values so pausing during the caught lock-out cannot hand control
   back early.
@@ -78,6 +85,10 @@ behaviour. It is wiped when the VM is restored; rebuild it if needed:
 - Enemy layer checks exclude the player layer so the player's body never breaks the graph.
 - Physics queries inside a `CharacterController` capsule ignore the capsule itself; that is
   why sight rays start at the eye, inside the enemy.
+- The objective chain is written **once**, when the `ObjectiveManager` list is empty. Later
+  builder runs re-point the manager's `keyHolder` but leave the steps alone, so hand-edited
+  wording survives. `Stage 6 - Rewrite Default Objective Chain` is the deliberate way to
+  throw those edits away.
 - Stage 5 numbers are tuned to this level's 12.8 m diagonal (table in `README.md`). Changing
   the constants in code does **not** update existing scene components - serialized values
   win - so use `Stage 5 - Apply Tuned Stealth Values` after editing them, and read the
