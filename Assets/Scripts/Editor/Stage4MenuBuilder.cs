@@ -50,7 +50,7 @@ namespace AshenWoods.EditorTools
                 return;
             }
 
-            int added = EnsureStage4Pieces();
+            int added = EnsureStage4Pieces() + Stage5NoiseBuilder.EnsureStage5Pieces();
 
             if (added > 0)
             {

@@ -1,5 +1,6 @@
 using UnityEngine;
 using AshenWoods.Interaction;
+using AshenWoods.World;
 
 namespace AshenWoods.Player
 {
@@ -20,6 +21,13 @@ namespace AshenWoods.Player
         [SerializeField] private PlayerLook look;
         [SerializeField] private CharacterController controller;
         [SerializeField] private PlayerInteractor interactor;
+
+        [Header("Noise")]
+        [Tooltip("Loudness reported when climbing into a hiding place. 0 makes it silent.")]
+        [SerializeField, Range(0f, 1f)] private float enterNoiseLoudness = 0.3f;
+
+        [Tooltip("Loudness reported when climbing back out.")]
+        [SerializeField, Range(0f, 1f)] private float leaveNoiseLoudness = 0.2f;
 
         /// <summary>True while the player is inside a hiding spot.</summary>
         public bool IsHidden { get; private set; }
@@ -95,6 +103,10 @@ namespace AshenWoods.Player
             }
 
             spot.SetOccupant(this);
+
+            // The cupboard door and the shuffle inside are audible; a hasty hide is not free.
+            NoiseSystem.Emit(spot.HidePoint.position, NoiseCategory.Hiding, enterNoiseLoudness, this);
+
             Debug.Log($"[Hiding] Player hid inside {spot.name}.", this);
         }
 
@@ -143,6 +155,7 @@ namespace AshenWoods.Player
             if (spot != null)
             {
                 spot.SetOccupant(null);
+                NoiseSystem.Emit(spot.HidePoint.position, NoiseCategory.Hiding, leaveNoiseLoudness, this);
                 Debug.Log($"[Hiding] Player left {spot.name}.", this);
             }
         }

@@ -25,6 +25,7 @@ namespace AshenWoods.Enemy
         [SerializeField] private Color patrolColor = new Color(0.42f, 0.44f, 0.40f);
         [SerializeField] private Color searchColor = new Color(0.85f, 0.62f, 0.18f);
         [SerializeField] private Color chaseColor = new Color(0.72f, 0.13f, 0.11f);
+        [SerializeField] private Color investigateColor = new Color(0.95f, 0.8f, 0.35f);
 
         private MaterialPropertyBlock block;
         private int baseColorId;
@@ -78,6 +79,9 @@ namespace AshenWoods.Enemy
             {
                 case EnemyState.Chase:
                     color = chaseColor;
+                    break;
+                case EnemyState.Investigate:
+                    color = investigateColor;
                     break;
                 case EnemyState.Search:
                 case EnemyState.Caught:

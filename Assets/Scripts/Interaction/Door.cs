@@ -1,4 +1,5 @@
 using UnityEngine;
+using AshenWoods.World;
 
 namespace AshenWoods.Interaction
 {
@@ -40,6 +41,13 @@ namespace AshenWoods.Interaction
 
         [Tooltip("Key id required to unlock. Must match the keyId on a KeyPickup.")]
         [SerializeField] private string requiredKeyId = "iron_key";
+
+        [Header("Noise")]
+        [Tooltip("Loudness (0-1) reported when the door starts to swing. 0 makes it silent.")]
+        [SerializeField, Range(0f, 1f)] private float openNoiseLoudness = 0.5f;
+
+        [Tooltip("Closing the door also squeaks, a little quieter than opening it.")]
+        [SerializeField] private bool noisyWhenClosing = true;
 
         [Header("Text")]
         [SerializeField] private string openPrompt = "Open door";
@@ -141,6 +149,7 @@ namespace AshenWoods.Interaction
         {
             targetProgress = 1f;
             State = DoorState.Opening;
+            EmitNoise(openNoiseLoudness);
             Debug.Log($"[Door] {name} opening.", this);
         }
 
@@ -148,7 +157,22 @@ namespace AshenWoods.Interaction
         {
             targetProgress = 0f;
             State = DoorState.Closing;
+            EmitNoise(noisyWhenClosing ? openNoiseLoudness * 0.6f : 0f);
             Debug.Log($"[Door] {name} closing.", this);
+        }
+
+        /// <summary>
+        /// Reports the hinge to the sound system. The door never asks who is listening: the
+        /// enemy's ears decide whether they can hear it.
+        /// </summary>
+        private void EmitNoise(float loudness)
+        {
+            if (loudness <= 0.001f)
+            {
+                return;
+            }
+
+            NoiseSystem.Emit(transform.position, NoiseCategory.Door, loudness, this);
         }
 
         private void Update()

@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using AshenWoods.Interaction;
+using AshenWoods.World;
 
 namespace AshenWoods.Enemy
 {
@@ -9,6 +10,9 @@ namespace AshenWoods.Enemy
     {
         /// <summary>Walking a fixed route, stopping to look around at each waypoint.</summary>
         Patrol,
+
+        /// <summary>Heading for a noise it heard, then looking around that spot.</summary>
+        Investigate,
 
         /// <summary>Has seen the target and is running at it.</summary>
         Chase,
@@ -23,6 +27,9 @@ namespace AshenWoods.Enemy
     /// <summary>
     /// The enemy's decision maker: a small state machine over sight and distance.
     ///
+    ///   Patrol       --hears a noise-->                   Investigate
+    ///   Investigate  --reaches it, looks around-->        Patrol
+    ///   Investigate  --sees target for Notice Seconds-->  Chase
     ///   Patrol  --sees target for Notice Seconds-->  Chase
     ///   Chase   --reaches target-->                  Caught
     ///   Chase   --no sight for Lose Sight Seconds--> Search
@@ -89,6 +96,16 @@ namespace AshenWoods.Enemy
         [Tooltip("How far ahead the enemy reaches for a door, in metres.")]
         [SerializeField, Min(0.2f)] private float doorReach = 1.1f;
 
+        [Header("Hearing")]
+        [Tooltip("Walk speed used while heading for a noise.")]
+        [SerializeField, Min(0f)] private float investigateSpeed = 2.4f;
+
+        [Tooltip("Seconds spent looking around the noise point before going back to patrol.")]
+        [SerializeField, Min(0f)] private float investigateLookSeconds = 4f;
+
+        [Tooltip("Degrees per second turned while investigating.")]
+        [SerializeField, Range(0f, 180f)] private float investigateLookAroundSpeed = 55f;
+
         [Header("Search")]
         [Tooltip("Seconds spent looking around the last known position before giving up.")]
         [SerializeField, Min(0f)] private float searchSeconds = 6f;
@@ -121,6 +138,8 @@ namespace AshenWoods.Enemy
         private float unseenTimer;       // continuous time without sight
         private float pauseRemaining;    // standing at a waypoint
         private float searchRemaining;   // looking around the last known position
+        private float investigateRemaining; // looking around a noise point
+        private Vector3 investigatePoint;
         private float caughtRemaining;   // standing still after a catch
         private float repathRemaining;
         private Vector3 lastKnownPoint;
@@ -178,6 +197,9 @@ namespace AshenWoods.Enemy
             {
                 case EnemyState.Patrol:
                     UpdatePatrol(deltaTime);
+                    break;
+                case EnemyState.Investigate:
+                    UpdateInvestigate(deltaTime);
                     break;
                 case EnemyState.Chase:
                     UpdateChase(deltaTime);
@@ -354,6 +376,55 @@ namespace AshenWoods.Enemy
             }
         }
 
+        // ------------------------------------------------------------- investigate
+
+        private void UpdateInvestigate(float deltaTime)
+        {
+            // Seeing the target always wins over curiosity about a noise.
+            if (HasNoticedTarget)
+            {
+                EnterChase();
+                return;
+            }
+
+            if (investigateRemaining > 0f)
+            {
+                investigateRemaining -= deltaTime;
+                transform.Rotate(0f, investigateLookAroundSpeed * deltaTime, 0f);
+
+                if (investigateRemaining <= 0f)
+                {
+                    EnterPatrol();
+                }
+
+                return;
+            }
+
+            if (navigation == null)
+            {
+                EnterPatrol();
+                return;
+            }
+
+            if (!navigation.HasPath)
+            {
+                if (!RequestDestination(investigatePoint))
+                {
+                    EnterPatrol();
+                }
+
+                return;
+            }
+
+            navigation.MoveAlongPath(investigateSpeed, deltaTime);
+            TryOpenDoorAhead();
+
+            if (navigation.HasArrived)
+            {
+                investigateRemaining = investigateLookSeconds;
+            }
+        }
+
         // ------------------------------------------------------------------ caught
 
         private void UpdateCaught(float deltaTime)
@@ -382,6 +453,7 @@ namespace AshenWoods.Enemy
             unseenTimer = 0f;
             pauseRemaining = 0f;
             searchRemaining = 0f;
+            investigateRemaining = 0f;
 
             if (navigation != null)
             {
@@ -404,6 +476,48 @@ namespace AshenWoods.Enemy
             SetState(EnemyState.Search);
             visibilityTimer = 0f;
             searchRemaining = 0f;
+
+            if (navigation != null)
+            {
+                navigation.Stop();
+            }
+        }
+
+        /// <summary>
+        /// Called by EnemyHearing when a noise gets through. Filtering by distance is the
+        /// hearing component's job; this only decides what to do about it.
+        ///
+        /// A noise never jumps straight to a chase - the enemy walks over to look. That is
+        /// what makes a thrown object a tool and a careless sprint a risk.
+        /// </summary>
+        public void HearNoise(
+            Vector3 position, float loudness = 1f, NoiseCategory category = NoiseCategory.Other)
+        {
+            if (State == EnemyState.Chase || State == EnemyState.Caught)
+            {
+                return; // Already busy with the target; a noise cannot distract it mid-chase.
+            }
+
+            investigatePoint = position;
+            lastKnownPoint = position;
+
+            if (logStateChanges)
+            {
+                Debug.Log(
+                    $"[Enemy] Heard {category} (loudness {loudness:0.00}) at {position}; investigating.", this);
+            }
+
+            EnterInvestigate();
+        }
+
+        private void EnterInvestigate()
+        {
+            SetState(EnemyState.Investigate);
+            visibilityTimer = 0f;
+            unseenTimer = 0f;
+            searchRemaining = 0f;
+            pauseRemaining = 0f;
+            investigateRemaining = 0f;
 
             if (navigation != null)
             {
@@ -552,6 +666,13 @@ namespace AshenWoods.Enemy
         {
             Gizmos.color = new Color(0.9f, 0.2f, 0.2f, 0.8f);
             Gizmos.DrawWireSphere(transform.position, catchRadius);
+
+            if (State == EnemyState.Investigate)
+            {
+                Gizmos.color = new Color(0.95f, 0.8f, 0.35f, 0.9f);
+                Gizmos.DrawLine(transform.position + Vector3.up, investigatePoint);
+                Gizmos.DrawWireSphere(investigatePoint, 0.4f);
+            }
 
             if (State == EnemyState.Chase || State == EnemyState.Search)
             {

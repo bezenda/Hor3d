@@ -1,4 +1,5 @@
 using UnityEngine;
+using AshenWoods.World;
 
 namespace AshenWoods.Interaction
 {
@@ -25,6 +26,10 @@ namespace AshenWoods.Interaction
         [SerializeField] private float spinDegreesPerSecond = 45f;
         [SerializeField] private float bobHeight = 0.04f;
         [SerializeField] private float bobSpeed = 1.6f;
+
+        [Header("Noise")]
+        [Tooltip("Loudness (0-1) reported when the key is picked up. 0 makes it silent.")]
+        [SerializeField, Range(0f, 1f)] private float pickupNoiseLoudness = 0.25f;
 
         private Vector3 visualStartPosition;
 
@@ -64,6 +69,7 @@ namespace AshenWoods.Interaction
             }
 
             actor.GiveKey(keyId);
+            NoiseSystem.Emit(transform.position, NoiseCategory.Item, pickupNoiseLoudness, this);
             Debug.Log($"[KeyPickup] Took '{keyId}' ({displayName}) at {transform.position}.", this);
             Destroy(gameObject);
 
