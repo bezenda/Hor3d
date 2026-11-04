@@ -20,13 +20,13 @@ The full design brief this project is built against is at the bottom of this fil
 | 3 | Enemy: waypoint navigation, vision, patrol, chase, search, caught placeholder, hiding spot | Done |
 | 4 | Pause menu (freeze + release cursor), satchel screen, clickable buttons | Done |
 | 5 | Sound events, enemy hearing, investigate state, stealth noise, hiding noise | Done |
-| 6 | Puzzles, objective manager, escape chain | Not started |
+| 6 | Breaker puzzle, objective chain (key → closet → crowbar → breaker → exit), front door, objective HUD | Done |
 | 7 | Death screen, restart, game-completed state, full UI | Not started |
 | 8 | Integration pass, playtest and fixes | Not started |
 
 Note: the brief's stages 2 and 3 are merged here (interaction + items + locks are all
 Stage 2 in this repo), so this project's numbering is one behind the brief after Stage 3.
-Use the table above, not the brief numbers, when resuming work.
+Use the table above, not the brief numbers, when resuming work..
 
 ## How to run a stage
 
@@ -38,6 +38,7 @@ Ashen Woods > Stage 2 - Add Interaction To Open Scene
 Ashen Woods > Stage 3 - Add Enemy To Open Scene
 Ashen Woods > Stage 4 - Add Pause Menu And Inventory To Open Scene
 Ashen Woods > Stage 5 - Add Sound And Stealth To Open Scene
+Ashen Woods > Stage 6 - Add Objectives And Escape To Open Scene
 ```
 
 Each item is **additive and idempotent**: existing objects are reused, only missing pieces
@@ -52,6 +53,39 @@ the player into the boot room happen once, the first time the wing is built.
 
 **Save the scene (Ctrl+S) after running a menu item.** The tools mark the scene dirty but
 never save it for you.
+
+## The escape chain
+
+Stage 6 adds the prototype objective chain from the brief, in order:
+
+1. **Find the iron key** - under the crouch tunnel in the west corner (Stage 2).
+2. **Unlock the closet** - the locked door in the north-east corner (Stage 2).
+3. **Take the crowbar** - inside the closet, a second `KeyPickup` with id `crowbar`.
+4. **Restore the breaker** - three switches on the panel on the north wall. The panel is
+   screwed shut until the crowbar is carried, and flipping switches is loud enough to pull
+   the enemy in.
+5. **Pry open the front door** - the panel at the far end of the corridor, behind the spawn
+   point. Its latch is dead until the breaker is live, so the exit cannot be used first.
+
+The chain lives in one list on `ObjectiveManager`; steps are watched by the manager itself
+(key held, door unlocked, puzzle solved, exit used) so no pickup or door knows about
+objectives. The HUD line is `ObjectiveUI`, and the objective text is the only place the
+wording is written.
+
+```
+Ashen Woods > Stage 6 - Rewrite Default Objective Chain
+Ashen Woods > Diagnostics/Log Objective Chain
+```
+
+The first replaces the list with the five default steps (destructive - it discards your
+wording). The second prints the chain with each step's state and its wired target, which
+is the quickest way to spot a step that can never complete.
+
+The breaker panel is a `PuzzleController` over a group of `PuzzleSwitch` components, so a
+second puzzle (a valve wheel, an ordered set of levers) can reuse the switches and only
+need a new controller. `EscapeExit` is a dedicated interactable rather than a `Door`
+because the corridor's end wall is solid: the panel is the placeholder for a doorway that
+will be cut into a real level later.
 
 ## Controls
 
@@ -84,6 +118,11 @@ The hall -> kitchen -> passage -> gallery -> hall loop is deliberate: the enemy 
 instead of queueing in a corridor, and there is always a second way out. The crawl hole
 between the hall and the kitchen is 1.05 m high, so a crouching player fits through it and
 the enemy does not.
+
+The front door of the house is in the gallery's far wall, so the corridor is now an inner
+hall rather than the entrance. Stage 6's escape exit is built there; a front door left over
+from the old layout is moved there once, which is why the corridor dead end can be opened
+into the wing without walling the old room off.
 
 ### Why a run cannot end at the start
 
@@ -131,10 +170,11 @@ Assets/Scripts/
   Editor/           Stage builders (one per stage) + shared helpers in Stage1PlaygroundBuilder
   Player/           Input, movement, look, key holder, hiding, noise bridge, enemy target
   Enemy/            Vision, hearing, brain (state machine), navigation, state colours
-  Interaction/      IInteractable, PlayerInteractor, Door, KeyPickup, HidingSpot
+  Interaction/      IInteractable, PlayerInteractor, Door, KeyPickup, HidingSpot,
+                    PuzzleController + PuzzleSwitch, EscapeExit
   World/            NoiseSystem + NoiseEvent (the gameplay sound bus)
-  UI/               Interaction prompt, satchel list
-  GameManagement/   Pause/menu controller
+  UI/               Interaction prompt, satchel list, objective line
+  GameManagement/   Pause/menu controller, objective chain
 Assets/Prefabs/     Player, Enemy, Doors, HidingSpots (all built by the stage tools)
 Assets/Materials/   Flat placeholder colours
 ```

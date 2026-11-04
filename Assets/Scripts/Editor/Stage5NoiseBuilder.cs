@@ -70,7 +70,7 @@ namespace AshenWoods.EditorTools
                 return;
             }
 
-            int added = EnsureStage5Pieces();
+            int added = EnsureStage5Pieces() + Stage6ObjectiveBuilder.EnsureStage6Pieces();
 
             if (added > 0)
             {

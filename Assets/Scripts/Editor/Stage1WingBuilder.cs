@@ -40,6 +40,15 @@ namespace AshenWoods.EditorTools
         internal static readonly Vector3 PlayerStartPosition = new Vector3(-4.4f, 0.05f, 10.2f);
         internal const float PlayerStartYaw = 90f;
 
+        /// <summary>
+        /// The house's front door: centred in the gallery's far wall, which is the wing's only
+        /// exterior wall. Stage 6 builds its escape exit here so both files agree on one spot.
+        /// </summary>
+        internal static readonly Vector3 FrontDoorPosition = new Vector3(0.65f, 0f, 16.55f);
+
+        /// <summary>The corridor dead end, where earlier builds mounted the front door.</summary>
+        private static readonly Vector3 LegacyFrontDoorPosition = new Vector3(1.8f, 0f, 8f);
+
         /// <summary>The spawn every earlier build used. Only a player standing here is moved.</summary>
         private static readonly Vector3 LegacyPlayerSpawn = new Vector3(1.8f, 0.05f, 7.2f);
 
@@ -67,7 +76,8 @@ namespace AshenWoods.EditorTools
                         + Stage2InteractionBuilder.EnsureStage2Pieces()
                         + Stage3EnemyBuilder.EnsureStage3Pieces()
                         + Stage4MenuBuilder.EnsureStage4Pieces()
-                        + Stage5NoiseBuilder.EnsureStage5Pieces();
+                        + Stage5NoiseBuilder.EnsureStage5Pieces()
+                        + Stage6ObjectiveBuilder.EnsureStage6Pieces();
 
             if (added > 0)
             {
@@ -118,6 +128,7 @@ namespace AshenWoods.EditorTools
                 "Placeholder_WingTrim", new Color(0.27f, 0.29f, 0.26f));
 
             added += EnsureCorridorOpening(wing, wallMaterial);
+            added += EnsureFrontDoorMoved();
             added += EnsureFloorsAndCeilings(wing, floorMaterial, ceilingMaterial);
             added += EnsureWalls(wing, wallMaterial);
             added += EnsureLights(wing);
@@ -164,6 +175,43 @@ namespace AshenWoods.EditorTools
             // The corridor ceiling sits at 2.4 m, so the opening keeps a 0.35 m lintel.
             added += EnsureWallX(wing, "Corridor_End_Lintel", 8.1f, 1f, 2.6f, DoorHeight, 2.4f, wallMaterial);
             return added;
+        }
+
+        // ---------------------------------------------------------------- front door
+
+        /// <summary>
+        /// Earlier builds mounted the front door on the corridor's dead end. The wing turns
+        /// that dead end into the way into the house, and a locked front door there would cut
+        /// the old room off completely, so the door is moved to the wing's far wall once.
+        /// </summary>
+        private static int EnsureFrontDoorMoved()
+        {
+            GameObject frontDoor = GameObject.Find("Escape_FrontDoor");
+            if (frontDoor == null)
+            {
+                return 0;
+            }
+
+            if (Vector3.Distance(frontDoor.transform.position, LegacyFrontDoorPosition) > 1f)
+            {
+                return 0; // Already moved, or placed by hand somewhere else.
+            }
+
+            frontDoor.transform.position = FrontDoorPosition;
+            frontDoor.transform.rotation = Quaternion.identity;
+
+            if (PrefabUtility.IsPartOfPrefabInstance(frontDoor))
+            {
+                PrefabUtility.RecordPrefabInstancePropertyModifications(frontDoor.transform);
+            }
+            else
+            {
+                EditorUtility.SetDirty(frontDoor.transform);
+            }
+
+            Debug.Log("[Wing] Moved the front door from the corridor to the gallery's far wall. " +
+                      "It is still the escape exit and its puzzle wiring is untouched.", frontDoor);
+            return 1;
         }
 
         // ------------------------------------------------------------------- shell
@@ -228,7 +276,12 @@ namespace AshenWoods.EditorTools
 
             // Gallery, the long room at the back. Its south doorway is x 0.2 .. 1.8.
             added += EnsureWallZ(wing, "Wing_Gallery_Wall_West", -2.5f, 13f, 16.8f, 0f, 3.2f, wallMaterial);
-            added += EnsureWallX(wing, "Wing_Gallery_Wall_North", 16.7f, -2.4f, 4.4f, 0f, 3.2f, wallMaterial);
+
+            // The gallery's far wall carries the house's front door, so it has a 1.5 m opening
+            // in the middle for the escape exit to sit in.
+            added += EnsureWallX(wing, "Wing_Gallery_Wall_North_West", 16.7f, -2.4f, -0.1f, 0f, 3.2f, wallMaterial);
+            added += EnsureWallX(wing, "Wing_Gallery_Wall_North_East", 16.7f, 1.4f, 4.4f, 0f, 3.2f, wallMaterial);
+            added += EnsureWallX(wing, "Wing_Gallery_Wall_North_Lintel", 16.7f, -0.1f, 1.4f, DoorHeight, 3.2f, wallMaterial);
             added += EnsureWallX(wing, "Wing_Gallery_Wall_South_West", 13.1f, -2.4f, 0.2f, 0f, 3.2f, wallMaterial);
             added += EnsureWallX(wing, "Wing_Gallery_Wall_South_Lintel", 13.1f, 0.2f, 1.8f, DoorHeight, 3.2f, wallMaterial);
             added += EnsureWallX(wing, "Wing_Gallery_Wall_South_East", 13.1f, 1.8f, 4.4f, 0f, 3.2f, wallMaterial);

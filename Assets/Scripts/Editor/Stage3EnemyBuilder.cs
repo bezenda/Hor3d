@@ -128,7 +128,8 @@ namespace AshenWoods.EditorTools
                         + Stage2InteractionBuilder.EnsureStage2Pieces()
                         + EnsureStage3Pieces()
                         + Stage4MenuBuilder.EnsureStage4Pieces()
-                        + Stage5NoiseBuilder.EnsureStage5Pieces();
+                        + Stage5NoiseBuilder.EnsureStage5Pieces()
+                        + Stage6ObjectiveBuilder.EnsureStage6Pieces();
 
             if (added > 0)
             {
