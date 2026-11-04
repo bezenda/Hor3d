@@ -52,20 +52,21 @@ namespace AshenWoods.EditorTools
 
         private static readonly Vector3 KeyPosition = new Vector3(-3.4f, 0.15f, -2.4f);
 
-        [MenuItem("Ashen Woods/Stage 2 - Add Interaction And Doors To Open Scene", false, 3)]
+        [MenuItem("Ashen Woods/Stages/Stage 2 - Interaction And Doors", false, 20)]
         private static void AddStage2Menu()
         {
-            if (SceneManager.GetActiveScene().path != Stage1PlaygroundBuilder.ScenePath)
+            if (!HouseBuilder.IsLevelScene())
             {
                 EditorUtility.DisplayDialog(
-                    "Open the playground scene first",
-                    "This tool only edits:\n" + Stage1PlaygroundBuilder.ScenePath + "\n\n" +
-                    "Nothing was changed. Open that scene from Assets/Scenes, then run the menu item again.",
+                    "Open a level scene first",
+                    "This tool only edits:\n" + HouseBuilder.HouseScenePath + "\n" +
+                    Stage1PlaygroundBuilder.ScenePath + "\n\n" +
+                    "Nothing was changed. Open one of those scenes from Assets/Scenes, then run the menu item again.",
                     "OK");
                 return;
             }
 
-            int added = Stage1PlaygroundBuilder.EnsurePlaygroundInActiveScene()
+            int added = HouseBuilder.EnsureLevelPieces()
                         + EnsureStage2Pieces()
                         + Stage3EnemyBuilder.EnsureStage3Pieces()
                         + Stage4MenuBuilder.EnsureStage4Pieces()

@@ -111,20 +111,21 @@ namespace AshenWoods.EditorTools
             Debug.Log(navigation.DescribeGraph(), navigation);
         }
 
-        [MenuItem("Ashen Woods/Stage 3 - Add Enemy And Hiding Spots To Open Scene", false, 4)]
+        [MenuItem("Ashen Woods/Stages/Stage 3 - Enemy And Hiding Spots", false, 21)]
         private static void AddStage3Menu()
         {
-            if (SceneManager.GetActiveScene().path != Stage1PlaygroundBuilder.ScenePath)
+            if (!HouseBuilder.IsLevelScene())
             {
                 EditorUtility.DisplayDialog(
-                    "Open the playground scene first",
-                    "This tool only edits:\n" + Stage1PlaygroundBuilder.ScenePath + "\n\n" +
-                    "Nothing was changed. Open that scene from Assets/Scenes, then run the menu item again.",
+                    "Open a level scene first",
+                    "This tool only edits:\n" + HouseBuilder.HouseScenePath + "\n" +
+                    Stage1PlaygroundBuilder.ScenePath + "\n\n" +
+                    "Nothing was changed. Open one of those scenes from Assets/Scenes, then run the menu item again.",
                     "OK");
                 return;
             }
 
-            int added = Stage1PlaygroundBuilder.EnsurePlaygroundInActiveScene()
+            int added = HouseBuilder.EnsureLevelPieces()
                         + Stage2InteractionBuilder.EnsureStage2Pieces()
                         + EnsureStage3Pieces()
                         + Stage4MenuBuilder.EnsureStage4Pieces()

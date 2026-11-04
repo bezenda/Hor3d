@@ -64,7 +64,7 @@ namespace AshenWoods.EditorTools
         // Crowbar: inside the locked closet, which is the room's north-east corner.
         private static readonly Vector3 CrowbarPosition = new Vector3(4.6f, 0.16f, -3.3f);
 
-        [MenuItem("Ashen Woods/Stage 6 - Add Objectives And Escape To Open Scene", false, 8)]
+        [MenuItem("Ashen Woods/Stages/Stage 6 - Objectives And Escape", false, 24)]
         private static void AddStage6Menu()
         {
             if (!IsPlaygroundOpen())
@@ -72,7 +72,7 @@ namespace AshenWoods.EditorTools
                 return;
             }
 
-            int added = Stage1PlaygroundBuilder.EnsurePlaygroundInActiveScene()
+            int added = HouseBuilder.EnsureLevelPieces()
                         + Stage2InteractionBuilder.EnsureStage2Pieces()
                         + Stage3EnemyBuilder.EnsureStage3Pieces()
                         + Stage4MenuBuilder.EnsureStage4Pieces()
@@ -93,7 +93,7 @@ namespace AshenWoods.EditorTools
             }
         }
 
-        [MenuItem("Ashen Woods/Stage 6 - Rewrite Default Objective Chain", false, 9)]
+        [MenuItem("Ashen Woods/Stages/Stage 6 - Rewrite Objective Chain", false, 25)]
         private static void RewriteObjectiveChain()
         {
             if (!IsPlaygroundOpen())
@@ -179,15 +179,16 @@ namespace AshenWoods.EditorTools
 
         private static bool IsPlaygroundOpen()
         {
-            if (SceneManager.GetActiveScene().path == Stage1PlaygroundBuilder.ScenePath)
+            if (HouseBuilder.IsLevelScene())
             {
                 return true;
             }
 
             EditorUtility.DisplayDialog(
-                "Open the playground scene first",
-                "This tool only edits:\n" + Stage1PlaygroundBuilder.ScenePath + "\n\n" +
-                "Nothing was changed. Open that scene from Assets/Scenes, then run the menu item again.",
+                "Open a level scene first",
+                "This tool only edits:\n" + HouseBuilder.HouseScenePath + "\n" +
+                Stage1PlaygroundBuilder.ScenePath + "\n\n" +
+                "Nothing was changed. Open one of those scenes from Assets/Scenes, then run the menu item again.",
                 "OK");
             return false;
         }

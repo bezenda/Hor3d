@@ -37,15 +37,16 @@ namespace AshenWoods.EditorTools
         private static readonly Color DimTextColor = new Color(0.62f, 0.6f, 0.56f);
         private static readonly Color ButtonColor = new Color(0.17f, 0.16f, 0.15f, 0.96f);
 
-        [MenuItem("Ashen Woods/Stage 4 - Add Pause Menu And Inventory To Open Scene", false, 5)]
+        [MenuItem("Ashen Woods/Stages/Stage 4 - Pause Menu And Inventory", false, 22)]
         private static void AddStage4Menu()
         {
-            if (SceneManager.GetActiveScene().path != Stage1PlaygroundBuilder.ScenePath)
+            if (!HouseBuilder.IsLevelScene())
             {
                 EditorUtility.DisplayDialog(
-                    "Open the playground scene first",
-                    "This tool only edits:\n" + Stage1PlaygroundBuilder.ScenePath + "\n\n" +
-                    "Nothing was changed. Open that scene from Assets/Scenes, then run the menu item again.",
+                    "Open a level scene first",
+                    "This tool only edits:\n" + HouseBuilder.HouseScenePath + "\n" +
+                    Stage1PlaygroundBuilder.ScenePath + "\n\n" +
+                    "Nothing was changed. Open one of those scenes from Assets/Scenes, then run the menu item again.",
                     "OK");
                 return;
             }

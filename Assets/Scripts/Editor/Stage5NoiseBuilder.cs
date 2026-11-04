@@ -57,15 +57,16 @@ namespace AshenWoods.EditorTools
         private const float HearingMinimumDistanceMetres = 1.5f;
         private const float WallAttenuation = 0.75f;
 
-        [MenuItem("Ashen Woods/Stage 5 - Add Sound And Stealth To Open Scene", false, 6)]
+        [MenuItem("Ashen Woods/Stages/Stage 5 - Sound And Stealth", false, 23)]
         private static void AddStage5Noise()
         {
-            if (SceneManager.GetActiveScene().path != Stage1PlaygroundBuilder.ScenePath)
+            if (!HouseBuilder.IsLevelScene())
             {
                 EditorUtility.DisplayDialog(
-                    "Open the playground scene first",
-                    "This tool only edits:\n" + Stage1PlaygroundBuilder.ScenePath + "\n\n" +
-                    "Nothing was changed. Open that scene from Assets/Scenes, then run the menu item again.",
+                    "Open a level scene first",
+                    "This tool only edits:\n" + HouseBuilder.HouseScenePath + "\n" +
+                    Stage1PlaygroundBuilder.ScenePath + "\n\n" +
+                    "Nothing was changed. Open one of those scenes from Assets/Scenes, then run the menu item again.",
                     "OK");
                 return;
             }
@@ -98,7 +99,7 @@ namespace AshenWoods.EditorTools
             return added;
         }
 
-        [MenuItem("Ashen Woods/Stage 5 - Apply Tuned Stealth Values", false, 7)]
+        [MenuItem("Ashen Woods/Tuning/Apply Tuned Stealth Values", false, 50)]
         private static void ApplyTunedStealthValues()
         {
             if (!IsPlaygroundOpen())
@@ -121,15 +122,16 @@ namespace AshenWoods.EditorTools
 
         private static bool IsPlaygroundOpen()
         {
-            if (SceneManager.GetActiveScene().path == Stage1PlaygroundBuilder.ScenePath)
+            if (HouseBuilder.IsLevelScene())
             {
                 return true;
             }
 
             EditorUtility.DisplayDialog(
-                "Open the playground scene first",
-                "This tool only edits:\n" + Stage1PlaygroundBuilder.ScenePath + "\n\n" +
-                "Nothing was changed. Open that scene from Assets/Scenes, then run the menu item again.",
+                "Open a level scene first",
+                "This tool only edits:\n" + HouseBuilder.HouseScenePath + "\n" +
+                Stage1PlaygroundBuilder.ScenePath + "\n\n" +
+                "Nothing was changed. Open one of those scenes from Assets/Scenes, then run the menu item again.",
                 "OK");
             return false;
         }

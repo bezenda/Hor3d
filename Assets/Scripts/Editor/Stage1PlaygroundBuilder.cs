@@ -17,8 +17,10 @@ namespace AshenWoods.EditorTools
     ///    instance, when you want a change to apply everywhere.
     ///
     /// Menu:
-    ///   Ashen Woods > Stage 1 - Create Playground Scene      (only when the scene does not exist)
-    ///   Ashen Woods > Stage 1 - Add Missing Pieces To Open Scene   (safe to run any time)
+    ///   Ashen Woods > Legacy Playground > Create Playground Scene          (only when the scene does not exist)
+    ///   Ashen Woods > Legacy Playground > Add Missing Pieces To Open Scene (safe to run any time)
+    ///
+    /// The rebuilt level lives in its own scene and is authored by HouseBuilder.
     /// </summary>
     public static partial class Stage1PlaygroundBuilder
     {
@@ -45,7 +47,7 @@ namespace AshenWoods.EditorTools
         private static readonly Vector3 PlayerSpawnPosition = Stage1WingBuilder.PlayerStartPosition;
         private const float PlayerSpawnYaw = Stage1WingBuilder.PlayerStartYaw;
 
-        [MenuItem("Ashen Woods/Stage 1 - Create Playground Scene", false, 1)]
+        [MenuItem("Ashen Woods/Legacy Playground/Create Playground Scene", false, 40)]
         private static void CreatePlaygroundScene()
         {
             if (System.IO.File.Exists(ScenePath))
@@ -82,7 +84,7 @@ namespace AshenWoods.EditorTools
                       PlayerPrefabPath + " - edit that prefab to change the player everywhere.");
         }
 
-        [MenuItem("Ashen Woods/Stage 1 - Add Missing Pieces To Open Scene", false, 2)]
+        [MenuItem("Ashen Woods/Legacy Playground/Add Missing Pieces To Open Scene", false, 41)]
         private static void AddMissingPieces()
         {
             // Guard: this tool only ever edits the playground scene, so it can never scatter
@@ -190,7 +192,7 @@ namespace AshenWoods.EditorTools
             return 1;
         }
 
-        private static GameObject EnsurePlayerPrefab(Material bodyMaterial)
+        internal static GameObject EnsurePlayerPrefab(Material bodyMaterial)
         {
             GameObject existingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
             if (existingPrefab != null)

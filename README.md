@@ -33,12 +33,17 @@ Use the table above, not the brief numbers, when resuming work..
 Everything is authored from the editor menu, never by hand-placing objects:
 
 ```
-Ashen Woods > Stage 1 - Build Playground Scene
-Ashen Woods > Stage 2 - Add Interaction To Open Scene
-Ashen Woods > Stage 3 - Add Enemy To Open Scene
-Ashen Woods > Stage 4 - Add Pause Menu And Inventory To Open Scene
-Ashen Woods > Stage 5 - Add Sound And Stealth To Open Scene
-Ashen Woods > Stage 6 - Add Objectives And Escape To Open Scene
+Ashen Woods > Level > Create Two-Storey House Scene      <- the rebuilt level
+Ashen Woods > Level > Build Or Update The House
+
+Ashen Woods > Stages > Stage 2 - Interaction And Doors
+Ashen Woods > Stages > Stage 3 - Enemy And Hiding Spots
+Ashen Woods > Stages > Stage 4 - Pause Menu And Inventory
+Ashen Woods > Stages > Stage 5 - Sound And Stealth
+Ashen Woods > Stages > Stage 6 - Objectives And Escape
+
+Ashen Woods > Tuning > Apply Tuned Stealth Values
+Ashen Woods > Diagnostics > Log House Layout / Log House Overlap Check
 ```
 
 Each item is **additive and idempotent**: existing objects are reused, only missing pieces
@@ -46,10 +51,19 @@ are added, and references are re-pointed on every run. Hand-placed objects survi
 Later stages also call the earlier ones, so running the newest item is enough on a scene
 built from Stage 1.
 
-The east wing (boot room, hall, kitchen, gallery and passage) is part of Stage 1 and is
-built by those same items. It also has its own entry:
-`Ashen Woods > Stage 1 - Build The East Wing`. Opening the corridor's dead end and moving
-the player into the boot room happen once, the first time the wing is built.
+Two level scenes exist:
+
+- `Assets/Scenes/AshWoods_House.unity` - the rebuilt two-storey house. Open it and press
+  Play. `Build Or Update The House` builds it if needed, then runs Stages 2-6 and moves
+  their doors, key, breaker, crowbar, escape frame, enemy, wardrobes and waypoints onto the
+  house anchors. The menu tree is `Level / Stages / Legacy Playground / Tuning /
+  Diagnostics`.
+- `Assets/Scenes/AshWoods_Stage1_Playground.unity` - the original single-storey playground
+  plus the east wing, kept working for comparison. Its items live under `Legacy Playground`:
+  `Create Playground Scene`, `Add Missing Pieces To Open Scene`, `Build The East Wing`.
+
+Running a `Stages` item in the house scene only adds that stage's objects and re-points
+them; it never drops the old room, corridor or wing into the new building.
 
 **Save the scene (Ctrl+S) after running a menu item.** The tools mark the scene dirty but
 never save it for you.
@@ -102,7 +116,30 @@ will be cut into a real level later.
 
 ## Level layout
 
-The house is the original stage room plus an east wing of five spaces:
+### The rebuilt house - `Assets/Scenes/AshWoods_House.unity`
+
+Two storeys, eight rooms, one staircase. Ground floor top at y = 0, first floor top at
+y = 3.2, ceiling at y = 6.0.
+
+| Floor | Room | Interior | Entered from | Notes |
+| --- | --- | --- | --- | --- |
+| Ground | Living room | x -6.0..0.2, z -2.0..1.8 | Foyer (door), kitchen | Crouch tunnel with the **iron key**, wardrobe-free cover, breaker is upstairs |
+| Ground | Kitchen | x 0.4..6.0, z -2.0..1.8 | Living room, hall | Pantry in the north-east corner (x 4.3..6.0, z -2.0..-0.2) behind the **locked door** and the **crowbar** |
+| Ground | Foyer | x -6.0..0.2, z 2.0..6.0 | Front door, living room, hall | **Player start**, the **front door / escape exit** in the south wall |
+| Ground | Hall | x 0.4..6.0, z 2.0..6.0 | Foyer, kitchen | Stairs rise east along the south wall |
+| First | Study | x -6.0..0.2, z -2.0..1.8 | Bedroom, bathroom | **Enemy start**, **breaker panel** on the north wall, wardrobe |
+| First | Bathroom | x 0.4..6.0, z -2.0..1.8 | Study, landing | Empty room, a dead end for the player |
+| First | Bedroom | x -6.0..0.2, z 2.0..6.0 | Study, landing | Bed and a wardrobe |
+| First | Landing | x 0.4..6.0, z 2.0..6.0 | Bedroom, bathroom, stairs | Stairwell hole x 1.4..5.0, z 5.0..6.0, rails on two sides |
+
+Door openings are 1.6 m wide (1.5 m leaf) and 2.1 m tall, cut out of one wall; the first
+floor uses 2.0 m open doorways. The stair is a 41.6 degree ramp collider with its treads
+only drawn, so the enemy's height probes pass over it. Both floors form a loop, and the
+patrol route crosses the stairs, so hiding upstairs is not automatically safe.
+
+### The original playground (legacy)
+
+The playground scene is the original stage room plus an east wing of five spaces:
 
 | Space | Interior | Entered from | Notes |
 | --- | --- | --- | --- |
@@ -167,7 +204,8 @@ between two waypoints, so a mismatch between the numbers and the layout is visib
 
 ```
 Assets/Scripts/
-  Editor/           Stage builders (one per stage) + shared helpers in Stage1PlaygroundBuilder
+  Editor/           Stage builders (one per stage) + HouseBuilder (two-storey level)
+                    + shared helpers in Stage1PlaygroundBuilder
   Player/           Input, movement, look, key holder, hiding, noise bridge, enemy target
   Enemy/            Vision, hearing, brain (state machine), navigation, state colours
   Interaction/      IInteractable, PlayerInteractor, Door, KeyPickup, HidingSpot,
@@ -183,8 +221,12 @@ See `AGENTS.md` for the conventions future contributors (human or AI) should fol
 
 ## Verification status
 
-The gameplay has been compiled and reasoned about, and the waypoint graph was simulated
+The gameplay has been compiled and reasoned about, the house plan was checked offline
+(every box against every other for overlaps, and every waypoint pair against the real link
+rule: 3 heights x 3 lateral offsets, max 4.2 m), and the waypoint graph was simulated
 offline, but **it has not been played in the Unity editor by the author of the scripts**.
+That offline check reports no overlapping boxes except the stair ramp's low end, which is
+deliberately sunk into the floor slab.
 Every stage is expected to be play-tested by the project owner; the Editor steps in each
 stage's write-up say exactly what to look for.
 

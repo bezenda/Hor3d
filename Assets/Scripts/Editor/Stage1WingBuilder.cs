@@ -28,8 +28,8 @@ namespace AshenWoods.EditorTools
     /// added when missing, so anything moved by hand survives a re-run.
     ///
     /// Menu:
-    ///   Ashen Woods > Stage 1 - Build The East Wing
-    ///   Ashen Woods > Diagnostics/Log Wing Layout
+    ///   Ashen Woods > Legacy Playground > Build The East Wing
+    ///   Ashen Woods > Diagnostics > Log Wing Layout
     /// </summary>
     public static class Stage1WingBuilder
     {
@@ -59,7 +59,7 @@ namespace AshenWoods.EditorTools
         // still being too low for the enemy's 1.5 m head-clearance ray.
         private const float CrawlHeight = 1.05f;
 
-        [MenuItem("Ashen Woods/Stage 1 - Build The East Wing", false, 8)]
+        [MenuItem("Ashen Woods/Legacy Playground/Build The East Wing", false, 42)]
         private static void BuildWingMenu()
         {
             if (SceneManager.GetActiveScene().path != Stage1PlaygroundBuilder.ScenePath)
@@ -424,7 +424,7 @@ namespace AshenWoods.EditorTools
 
         // --------------------------------------------------------------- diagnostics
 
-        [MenuItem("Ashen Woods/Diagnostics/Log Wing Layout", false, 92)]
+        [MenuItem("Ashen Woods/Diagnostics/Log Wing Layout", false, 95)]
         private static void LogWingLayout()
         {
             GameObject wingObject = GameObject.Find(WingRootName);

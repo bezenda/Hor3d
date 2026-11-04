@@ -29,11 +29,27 @@ bitten previous contributors.
 | 4 | Pause menu, satchel, EventSystem, buttons | `Stage4MenuBuilder` |
 | 5 | Noise bus, player noise, enemy hearing, Investigate state | `Stage5NoiseBuilder` |
 | 6 | Objective chain, breaker puzzle, front-door exit, objective HUD | `Stage6ObjectiveBuilder` |
+| - | Two-storey house scene, door openings, stairs, anchor alignment | `HouseBuilder` |
 | 7 | (planned) death, restart, completed screen | — |
 
 Each builder exposes `EnsureStageNPieces()` and a `MenuItem` that validates the open scene
 first. `Stage1PlaygroundBuilder` also holds the shared helpers: `SetObjectReference`,
 `SetLayerMask`, `EnsureFolder`, `ScenePath`, `PrefabFolder`.
+
+The menu tree is grouped, and the group is part of the interface - keep it:
+
+```
+Ashen Woods / Level              Create Two-Storey House Scene, Build Or Update The House
+Ashen Woods / Stages             Stage 2..6 + Rewrite Objective Chain
+Ashen Woods / Legacy Playground  Create Playground Scene, Add Missing Pieces, Build The East Wing
+Ashen Woods / Tuning             Apply Tuned Stealth Values
+Ashen Woods / Diagnostics        House layout, overlap check, nav graph, stealth, objectives, wing
+```
+
+Two level scenes share one set of stage builders. `HouseBuilder.IsLevelScene()` is the guard
+every stage menu uses, and `HouseBuilder.EnsureLevelPieces()` is what they call instead of
+`EnsurePlaygroundInActiveScene()`: it returns 0 in the house scene, because the old Stage 1
+shell (room, corridor, wing) must never appear inside the new building.
 
 ## Architecture at a glance
 
@@ -114,6 +130,25 @@ behaviour. It is wiped when the VM is restored; rebuild it if needed:
 - Wing waypoints are appended after `Node_10` on purpose. Inserting one in the middle would
   leave every saved `Node_N` in an existing scene pointing at the wrong place, because the
   builder only creates missing names and never moves existing ones.
+- The house scene (`AshWoods_House.unity`) is authored by `HouseBuilder`. It never runs
+  `Stage1PlaygroundBuilder.EnsurePlaygroundInActiveScene()`, so the old room, corridor and
+  wing stay out of it. Stage objects are created by the stage builders at their original
+  coordinates and then moved onto house anchors; `MoveObject` only moves an object that is
+  not already at its anchor, so re-running is safe.
+- `HouseBuilder` needs **32** nav nodes but Stage 3 only creates 23. The builder adds
+  `Node_23`..`Node_31` itself before positioning everything, and the patrol points are
+  rewritten from `PatrolNodeIndices`. Adding a room means adding to `HouseBuilder.NavNodes`
+  (the extra nodes are created on demand); adding an index in the middle would renumber every
+  later node and break the patrol array.
+- House door openings are cut out of one wall (`_West`/`_East` + `_Lintel` + optional
+  `_Sill`), never added as a second frame. That is what removed the overlapping door frames;
+  the escape exit is 1.5 m wide in a 2.15 m hole so its own lintel fits inside the wall.
+- The house stair is one smooth ramp collider at 41.6 degrees (inside the 45 degree slope
+  limit) with collider-less drawn treads, so the navigation height probes pass over it. The
+  first-floor stairwell is a real hole: three landing slabs around x 1.4..5.0, z 5.0..6.0.
+  Rails sit on the hole's north and west edges and stop at x 5.0 so the stairs can be left.
+- `Diagnostics > Log House Overlap Check` compares every renderer bound under `House` and
+  ignores the stair ramp, whose low end is intentionally sunk into the floor slab.
 
 ## Git
 
