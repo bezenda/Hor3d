@@ -96,6 +96,13 @@ namespace AshenWoods.Enemy
         [Tooltip("How far ahead the enemy reaches for a door, in metres.")]
         [SerializeField, Min(0.2f)] private float doorReach = 1.1f;
 
+        [Header("Start")]
+        [Tooltip("Seconds after Play during which the enemy patrols but cannot see or hear the " +
+                 "target. The player starts behind two walls, so this only matters if you run " +
+                 "straight at it - and it is what stops a fresh run ending in a chase before " +
+                 "the player has moved. 0 disables it.")]
+        [SerializeField, Min(0f)] private float wakeDelaySeconds = 8f;
+
         [Header("Hearing")]
         [Tooltip("Walk speed used while heading for a noise.")]
         [SerializeField, Min(0f)] private float investigateSpeed = 2.4f;
@@ -145,6 +152,8 @@ namespace AshenWoods.Enemy
         private Vector3 lastKnownPoint;
         private Vector3 catchPoint;
         private Vector3 lastPlannedDestination;
+        private float wakeRemaining;
+        private bool sensesActive;
 
         private void Awake()
         {
@@ -180,6 +189,14 @@ namespace AshenWoods.Enemy
 
         private void Start()
         {
+            wakeRemaining = Mathf.Max(0f, wakeDelaySeconds);
+            sensesActive = wakeRemaining <= 0f;
+
+            if (!sensesActive && logStateChanges)
+            {
+                Debug.Log($"[Enemy] Waking up: sight and hearing are off for {wakeRemaining:0.0} s.", this);
+            }
+
             EnterPatrol();
         }
 
@@ -191,6 +208,7 @@ namespace AshenWoods.Enemy
             }
 
             float deltaTime = Time.deltaTime;
+            TickWakeUp(deltaTime);
             UpdateSenses(deltaTime);
 
             switch (State)
@@ -215,8 +233,42 @@ namespace AshenWoods.Enemy
 
         // ------------------------------------------------------------------ senses
 
+        /// <summary>
+        /// Runs down the start grace. While it lasts the enemy still patrols, so the house
+        /// feels alive, but nothing it could see or hear is trusted.
+        /// </summary>
+        private void TickWakeUp(float deltaTime)
+        {
+            if (sensesActive)
+            {
+                return;
+            }
+
+            wakeRemaining -= deltaTime;
+
+            if (wakeRemaining > 0f)
+            {
+                return;
+            }
+
+            wakeRemaining = 0f;
+            sensesActive = true;
+
+            if (logStateChanges)
+            {
+                Debug.Log("[Enemy] Waking up: sight and hearing are live.", this);
+            }
+        }
+
         private void UpdateSenses(float deltaTime)
         {
+            if (!sensesActive)
+            {
+                CanSeeTarget = false;
+                visibilityTimer = 0f;
+                return;
+            }
+
             CanSeeTarget = !target.IsHiddenFromEnemy
                            && vision.CanSee(target.TargetRoot, target.AimPoint);
 
@@ -493,6 +545,11 @@ namespace AshenWoods.Enemy
         public void HearNoise(
             Vector3 position, float loudness = 1f, NoiseCategory category = NoiseCategory.Other)
         {
+            if (!sensesActive)
+            {
+                return; // Still waking up: the start grace ignores noises as well as sight.
+            }
+
             if (State == EnemyState.Chase || State == EnemyState.Caught)
             {
                 return; // Already busy with the target; a noise cannot distract it mid-chase.

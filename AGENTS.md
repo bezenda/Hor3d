@@ -23,6 +23,7 @@ bitten previous contributors.
 | Repo stage | What it owns | Builder |
 | --- | --- | --- |
 | 1 | Scene, player rig, movement, look, input, footsteps | `Stage1PlaygroundBuilder` |
+| 1 | East wing rooms, corridor opening, boot-room player start | `Stage1WingBuilder` |
 | 2 | Interaction raycast, doors, keys, key holder, prompt UI | `Stage2InteractionBuilder` |
 | 3 | Enemy prefab, waypoint graph, vision, patrol/chase/search, hiding spots | `Stage3EnemyBuilder` |
 | 4 | Pause menu, satchel, EventSystem, buttons | `Stage4MenuBuilder` |
@@ -85,6 +86,18 @@ behaviour. It is wiped when the VM is restored; rebuild it if needed:
 - Private serialized fields are written from editor code through `SetFloat` /
   `SetObjectReference` / `SetLayerMask` (SerializedObject). Plain assignment is silently
   discarded by Unity.
+- The east wing (`Stage1WingBuilder`) opens the corridor's dead end once, and only while
+  `Corridor_Wall_End` still has the position and size the Stage 1 builder gave it. If that
+  wall was edited by hand the tool leaves it alone and logs a warning; the wing is built
+  either way.
+- The player is only moved to the boot-room start while standing on the old corridor spawn
+  (1.8, 0.05, 7.2). A hand-placed start point anywhere else is never overwritten.
+- `EnemyBrain.wakeDelaySeconds` is the start grace: the enemy patrols, but sight and
+  hearing stay off until it runs out. It is the second half of the anti-spawn-kill design -
+  keep the boot room's walls, do not rely on the delay alone.
+- Wing waypoints are appended after `Node_10` on purpose. Inserting one in the middle would
+  leave every saved `Node_N` in an existing scene pointing at the wrong place, because the
+  builder only creates missing names and never moves existing ones.
 
 ## Git
 

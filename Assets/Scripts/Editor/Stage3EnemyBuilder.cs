@@ -67,11 +67,31 @@ namespace AshenWoods.EditorTools
             // Standing on the top step is height, not a hiding place: without a node up here
             // the enemy can only reach the foot of the stairs and a target on them is safe.
             // The y is the top of Step_4, so the walkability rays start above the treads.
-            new Vector3(-3.4f, 0.72f, 3.05f)  // 10: on top of the west steps
+            new Vector3(-3.4f, 0.72f, 3.05f), // 10: on top of the west steps
+
+            // The east wing. Appending keeps every earlier index pointing at the node it was
+            // built for, so a scene that already has Node_0 .. Node_10 is only extended.
+            // Doorways are 1.6 m wide and each node below sits in the middle of one, which is
+            // what lets the 0.3 m body clearance fit through at every height check.
+            new Vector3(1.8f, 0f, 8.8f),    // 11: hall, just inside the corridor doorway
+            new Vector3(0.6f, 0f, 10.6f),   // 12: hall centre
+            new Vector3(0.6f, 0f, 12.6f),   // 13: hall north, in front of the gallery doorway
+            new Vector3(1.0f, 0f, 14.4f),   // 14: gallery, south
+            new Vector3(0.4f, 0f, 16.0f),   // 15: gallery, north-west
+            new Vector3(3.4f, 0f, 15.2f),   // 16: gallery, in front of the passage doorway
+            new Vector3(5.6f, 0f, 15.2f),   // 17: passage, north
+            new Vector3(5.6f, 0f, 13.0f),   // 18: passage, south
+            new Vector3(5.6f, 0f, 10.4f),   // 19: kitchen, north
+            new Vector3(3.9f, 0f, 10.2f),   // 20: kitchen, in front of the hall doorway
+            new Vector3(-3.4f, 0f, 10.6f),  // 21: boot room centre (player start)
+            new Vector3(-1.0f, 0f, 10.2f)   // 22: boot room doorway
         };
 
         /// <summary>Indices into <see cref="NavNodePositions"/> used for the patrol loop, in order.</summary>
-        private static readonly int[] PatrolNodeIndices = { 0, 2, 4, 6, 7 };
+        private static readonly int[] PatrolNodeIndices = { 0, 2, 4, 6, 7, 13, 14, 16, 18, 19 };
+
+        // The boot room (nodes 21 and 22) is deliberately absent: it is the player's start and
+        // the one room the enemy never wanders into on its own.
 
         [MenuItem("Ashen Woods/Diagnostics/Log Enemy Navigation Graph", false, 90)]
         private static void LogNavigationGraph()
@@ -500,6 +520,20 @@ namespace AshenWoods.EditorTools
             added += EnsureHidingSpotInstance(
                 hidingPrefab, root, WardrobeEastName,
                 new Vector3(4.675f, 0f, 0.2f), Quaternion.Euler(0f, -90f, 0f));
+
+            // The wing adds two more, but only once its rooms exist.
+            if (GameObject.Find(Stage1WingBuilder.WingRootName) != null)
+            {
+                // Boot room: on the west wall, opening east, behind the player's start point.
+                added += EnsureHidingSpotInstance(
+                    hidingPrefab, root, "Hiding_Wardrobe_Boot",
+                    new Vector3(-5.05f, 0f, 12.2f), Quaternion.Euler(0f, 90f, 0f));
+
+                // Gallery: under the north wall, opening south into the long room.
+                added += EnsureHidingSpotInstance(
+                    hidingPrefab, root, "Hiding_Wardrobe_Gallery",
+                    new Vector3(2.6f, 0f, 16.15f), Quaternion.Euler(0f, 180f, 0f));
+            }
 
             return added;
         }

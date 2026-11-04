@@ -45,6 +45,11 @@ are added, and references are re-pointed on every run. Hand-placed objects survi
 Later stages also call the earlier ones, so running the newest item is enough on a scene
 built from Stage 1.
 
+The east wing (boot room, hall, kitchen, gallery and passage) is part of Stage 1 and is
+built by those same items. It also has its own entry:
+`Ashen Woods > Stage 1 - Build The East Wing`. Opening the corridor's dead end and moving
+the player into the boot room happen once, the first time the wing is built.
+
 **Save the scene (Ctrl+S) after running a menu item.** The tools mark the scene dirty but
 never save it for you.
 
@@ -61,11 +66,42 @@ never save it for you.
 | Esc | Pause menu |
 | Tab | Satchel |
 
+## Level layout
+
+The house is the original stage room plus an east wing of five spaces:
+
+| Space | Interior | Entered from | Notes |
+| --- | --- | --- | --- |
+| Original room | 10 x 8 m | Corridor | Enemy start, locked closet, crouch tunnel, iron key |
+| Corridor | 1.6 m wide | Room doorway | Its dead end now opens into the wing |
+| Boot room | 3.6 x 4.6 m | Hall, west | **Player start**; no patrol point, so it stays the quiet pocket |
+| Hall | 4.4 x 4.6 m | Corridor, boot room, gallery, kitchen | Junction, 3.0 m ceiling |
+| Kitchen | 4 x 4 m | Hall doorway + 1.05 m crawl hole | Counters and an island break the sightline |
+| Gallery | 6.8 x 3.4 m | Hall + back passage | Long room, two shelves, a wardrobe |
+| Passage | 2 x 4 m | Gallery + kitchen | Narrow back route that closes the loop |
+
+The hall -> kitchen -> passage -> gallery -> hall loop is deliberate: the enemy can circle
+instead of queueing in a corridor, and there is always a second way out. The crawl hole
+between the hall and the kitchen is 1.05 m high, so a crouching player fits through it and
+the enemy does not.
+
+### Why a run cannot end at the start
+
+- The player spawns in the boot room, behind two walls, facing its only doorway, instead of
+  standing in the corridor with a clear sightline to the enemy.
+- The enemy starts in the original room, about 13.5 m away through three walls.
+- Nothing on the enemy's patrol route enters the boot room; it only comes in while chasing
+  or while investigating a noise made there.
+- `EnemyBrain > Start > Wake Delay Seconds` (default 8) keeps sight and hearing off at the
+  beginning of a run while the enemy carries on patrolling. Set it to 0 in the Inspector
+  for a merciless start.
+
 ## Sound tuning
 
 The Stage 5 numbers are chosen against this level's real distances: the room interior is
 10 x 8 m (12.8 m diagonal), the corridor mouth is 11.7 m from the closet door and the enemy
-spawn is 10.1 m from that mouth. With a 16 m maximum noise radius and 14 m of hearing:
+spawn is 10.1 m from that mouth. The wing's longest open run is the 6.8 m gallery, so the
+same radii cover it without retuning. With a 16 m maximum noise radius and 14 m of hearing:
 
 | Source | Loudness | Open air | Behind one wall |
 | --- | --- | --- | --- |

@@ -40,8 +40,10 @@ namespace AshenWoods.EditorTools
         private const float DoorwayMinX = 1f;
         private const float DoorwayMaxX = 2.6f;
 
-        private static readonly Vector3 PlayerSpawnPosition = new Vector3(1.8f, 0.05f, 7.2f);
-        private const float PlayerSpawnYaw = 180f;
+        // A fresh run starts in the wing's boot room: a closed room behind two walls,
+        // facing its own doorway. See Stage1WingBuilder for the layout.
+        private static readonly Vector3 PlayerSpawnPosition = Stage1WingBuilder.PlayerStartPosition;
+        private const float PlayerSpawnYaw = Stage1WingBuilder.PlayerStartYaw;
 
         [MenuItem("Ashen Woods/Stage 1 - Create Playground Scene", false, 1)]
         private static void CreatePlaygroundScene()
@@ -146,6 +148,10 @@ namespace AshenWoods.EditorTools
                 BuildLighting();
                 addedCount++;
             }
+
+            // The east wing is part of the level now, so every menu item that completes the
+            // playground also builds the rooms the player starts in.
+            addedCount += Stage1WingBuilder.EnsureWingPieces();
 
             AssetDatabase.SaveAssets();
             return addedCount;
