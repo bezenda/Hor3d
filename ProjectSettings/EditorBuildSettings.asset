@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/AshWoods_Stage1_Playground.unity
     guid: 42836bcd3bd6b064b96e3915f8af6e66
+  - enabled: 1
+    path: Assets/Scenes/AshWoods_House.unity
+    guid: 1255ab3ab5d0b1548ba30974848c3d00
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
