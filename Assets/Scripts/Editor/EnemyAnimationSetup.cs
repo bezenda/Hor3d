@@ -33,10 +33,28 @@ namespace AshenWoods.EditorTools
         private const float WalkThreshold = 1.5f;
         private const float RunThreshold = 3.3f;
 
-        private static readonly string[] IdleWords = { "idle", "stand", "breath", "wait" };
-        private static readonly string[] WalkWords = { "walk", "patrol", "stalk" };
-        private static readonly string[] RunWords = { "run", "sprint", "chase", "jog" };
-        private static readonly string[] CaughtWords = { "attack", "grab", "catch", "kill", "bite", "scream", "roar", "hit" };
+        internal static readonly string[] IdleWords = { "idle", "stand", "breath", "wait" };
+        internal static readonly string[] WalkWords = { "walk", "patrol", "stalk" };
+        internal static readonly string[] RunWords = { "run", "sprint", "chase", "jog" };
+        internal static readonly string[] CaughtWords = { "attack", "grab", "catch", "kill", "bite", "scream", "roar", "hit" };
+
+        /// <summary>True when a clip or take name looks like idle / walk / run / attack.</summary>
+        internal static bool IsMovementClipName(string clipName)
+        {
+            string lower = clipName.ToLowerInvariant();
+            foreach (string[] words in new[] { IdleWords, WalkWords, RunWords, CaughtWords })
+            {
+                foreach (string word in words)
+                {
+                    if (lower.Contains(word))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
 
         [MenuItem(MenuPath, false, 60)]
         private static void SetUp()
@@ -466,19 +484,13 @@ namespace AshenWoods.EditorTools
 
         private static Bounds RendererBounds(Transform model)
         {
-            Renderer[] renderers = model.GetComponentsInChildren<Renderer>(true);
-            if (renderers.Length == 0)
-            {
-                return new Bounds();
-            }
+            return EnemyModelInstaller.MeshBounds(model.gameObject);
+        }
 
-            Bounds bounds = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++)
-            {
-                bounds.Encapsulate(renderers[i].bounds);
-            }
-
-            return bounds;
+        /// <summary>Ticks Loop Time on a clip inside a model file. Used by the model installer.</summary>
+        internal static void SetLoopingPublic(AnimationClip clip)
+        {
+            SetLooping(clip);
         }
 
         private static void SetBool(Object target, string field, bool value)
