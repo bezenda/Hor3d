@@ -400,6 +400,15 @@ namespace AshenWoods.Enemy
             {
                 searchRemaining -= deltaTime;
                 transform.Rotate(0f, searchLookAroundSpeed * deltaTime, 0f);
+
+                // Done looking around the last known spot: give up. Without this the next
+                // frame re-planned to the same spot, "arrived" at once and restarted the
+                // look-around, so a search never ended and the patrol never resumed.
+                if (searchRemaining <= 0f)
+                {
+                    EnterPatrol();
+                }
+
                 return;
             }
 
@@ -424,6 +433,12 @@ namespace AshenWoods.Enemy
 
             if (navigation.HasArrived)
             {
+                if (searchSeconds <= 0f)
+                {
+                    EnterPatrol();
+                    return;
+                }
+
                 searchRemaining = searchSeconds;
             }
         }
@@ -473,6 +488,12 @@ namespace AshenWoods.Enemy
 
             if (navigation.HasArrived)
             {
+                if (investigateLookSeconds <= 0f)
+                {
+                    EnterPatrol();
+                    return;
+                }
+
                 investigateRemaining = investigateLookSeconds;
             }
         }

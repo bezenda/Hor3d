@@ -28,6 +28,10 @@ namespace AshenWoods.Player
         [SerializeField] private PlayerInputReader input;
         [SerializeField] private PlayerInteractor interactor;
 
+        [Tooltip("Front door. Once it has been forced open the enemy ignores the player. " +
+                 "Found in the scene when empty; a scene without one is unaffected.")]
+        [SerializeField] private EscapeExit escapeExit;
+
         [Header("Aim")]
         [Tooltip("Used only when no Aim Point is assigned.")]
         [SerializeField, Min(0.2f)] private float aimHeight = 1.5f;
@@ -43,7 +47,12 @@ namespace AshenWoods.Player
         public Vector3 AimPoint =>
             aimPoint != null ? aimPoint.position : transform.position + Vector3.up * aimHeight;
 
-        public bool IsHiddenFromEnemy => hiding != null && hiding.IsHidden;
+        public bool IsHiddenFromEnemy => (hiding != null && hiding.IsHidden) || HasEscaped;
+
+        // Once the front door gives way the run is won. Until the death/completed stage adds
+        // a proper end screen, the player simply stops being a target, so the loud escape
+        // noise cannot bring the enemy over to "catch" a winner back to the spawn point.
+        private bool HasEscaped => escapeExit != null && escapeExit.HasEscaped;
 
         private Vector3 spawnPosition;
         private Quaternion spawnRotation;
@@ -74,6 +83,11 @@ namespace AshenWoods.Player
             if (interactor == null)
             {
                 interactor = GetComponent<PlayerInteractor>();
+            }
+
+            if (escapeExit == null)
+            {
+                escapeExit = FindAnyObjectByType<EscapeExit>();
             }
 
             if (aimPoint == null)
