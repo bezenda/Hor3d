@@ -30,7 +30,7 @@ bitten previous contributors.
 | 5 | Noise bus, player noise, enemy hearing, Investigate state | `Stage5NoiseBuilder` |
 | 6 | Objective chain, breaker puzzle, front-door exit, objective HUD | `Stage6ObjectiveBuilder` |
 | - | Two-storey house scene, door openings, stairs, anchor alignment | `HouseBuilder` |
-| 7 | (planned) death, restart, completed screen | — |
+| 7 | Endings, restart, flashlight, batteries, house power, sound, threat cues | `Stage7FlowBuilder` |
 
 Each builder exposes `EnsureStageNPieces()` and a `MenuItem` that validates the open scene
 first. `Stage1PlaygroundBuilder` also holds the shared helpers: `SetObjectReference`,
@@ -40,10 +40,11 @@ The menu tree is grouped, and the group is part of the interface - keep it:
 
 ```
 Ashen Woods / Level              Create Two-Storey House Scene, Build Or Update The House
-Ashen Woods / Stages             Stage 2..6 + Rewrite Objective Chain
+Ashen Woods / Stages             Stage 2..7 + Rewrite Objective Chain
 Ashen Woods / Legacy Playground  Create Playground Scene, Add Missing Pieces, Build The East Wing
 Ashen Woods / Tuning             Apply Tuned Stealth Values
-Ashen Woods / Diagnostics        House layout, overlap check, nav graph, stealth, objectives, wing
+Ashen Woods / Diagnostics        House layout, overlap check, nav graph, stealth, objectives, wing,
+                                 Verbose Gameplay Logs (toggle)
 ```
 
 Two level scenes share one set of stage builders. `HouseBuilder.IsLevelScene()` is the guard
@@ -69,6 +70,17 @@ shell (room, corridor, wing) must never appear inside the new building.
 - `PuzzleController` owns the solve rule over a list of `PuzzleSwitch`; a switch only flips
   itself and reports. `EscapeExit` is a separate interactable (not a `Door`) because the
   corridor's end wall is solid; it gates on the puzzle being solved.
+- `GameFlowController` owns the run's start and endings. It listens to
+  `PlayerEnemyTarget.Caught` and to the objective chain / `EscapeExit.Escaped`, never to the
+  enemy. While it is in the scene it sets `PlayerEnemyTarget.RespawnOnCaught = false`; without
+  it the old respawn placeholder still works. `IEnemyTarget.IsOutOfPlay` (caught or escaped)
+  makes every enemy ignore the player.
+- `EnemyBrain.Alertness` (0..1) and its state are all `ThreatFeedback` reads; it never sees
+  the player. `IEnemyTarget.ApproachPoint` is where an enemy stands to drag a hidden player
+  out (the spot in front of the wardrobe).
+- Every sound comes from `ProceduralAudio.Get(PlaceholderSound)`. Swap in recorded clips
+  there and nothing else changes. Gameplay noises become audible through
+  `NoiseSoundPlayer`, which listens to the same `NoiseSystem` event as the enemy's ears.
 - `GameMenuController` freezes with `Time.timeScale = 0` and disables input/interaction,
   restoring the *previous* values so pausing during the caught lock-out cannot hand control
   back early.
@@ -90,6 +102,18 @@ behaviour. It is wiped when the VM is restored; rebuild it if needed:
 `write_file` cannot write to `/tmp`; use a terminal heredoc. Commands are capped at 64 KiB.
 
 ## Gotchas
+
+- Runtime trace messages use `GameLog.Info`, not `Debug.Log`; they print only while
+  `Diagnostics > Verbose Gameplay Logs` is on (stored in PlayerPrefs, read when Play starts).
+  Use `Debug.LogWarning`/`LogError` for anything the user must always see.
+- `HousePower` scales the lamps it was given; it remembers their authored intensity in
+  `Awake`. Edit lamp brightness on the lights, not on `HousePower`. The Stage 7 builder
+  re-collects every non-directional light that is not on the player or an enemy.
+- Pausing and the end screens set `AudioListener.pause`. A sound that must play over a frozen
+  game needs `ignoreListenerPause` (the death sting does).
+- Unity *is* installed on the owner's machine (6000.4.4f1). When the editor is closed,
+  `Stage7FlowBuilder.BuildHouseInBatchMode` compiles the project and rebuilds and saves the
+  house scene from the command line - a real compile check, but still not a playtest.
 
 - The scene has **no baked NavMesh** and the enemy deliberately does not use one. Waypoints
   are `Enemy_Navigation/NavNodes` children plus `Node_10` on the stair landing.

@@ -17,10 +17,27 @@ namespace AshenWoods.Enemy
         /// <summary>World point to aim at and check line of sight against (roughly the head).</summary>
         Vector3 AimPoint { get; }
 
-        /// <summary>True while the target is hidden and enemies must ignore it.</summary>
+        /// <summary>
+        /// True while the target is hidden and cannot be seen. An enemy that watched the target
+        /// hide may still come and pull it out (see <see cref="ApproachPoint"/>).
+        /// </summary>
         bool IsHiddenFromEnemy { get; }
 
-        /// <summary>Called once when an enemy reaches the target.</summary>
+        /// <summary>
+        /// True once the target has left the game (escaped, or already caught and waiting for
+        /// a restart). Enemies neither see, hunt nor catch a target that is out of play.
+        /// </summary>
+        bool IsOutOfPlay { get; }
+
+        /// <summary>
+        /// Where an enemy has to stand to reach the target. Normally the target's own position;
+        /// while hidden it is the spot in front of the hiding place, which is walkable.
+        /// </summary>
+        Vector3 ApproachPoint { get; }
+
+        /// <summary>
+        /// Called once when an enemy reaches the target. A hidden target is pulled out first.
+        /// </summary>
         void NotifyCaught(Vector3 enemyPosition);
     }
 }

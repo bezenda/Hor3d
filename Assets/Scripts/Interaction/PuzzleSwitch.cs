@@ -100,7 +100,7 @@ namespace AshenWoods.Interaction
 
             // A breaker is loud, so solving the puzzle is a risk, not a free action.
             NoiseSystem.Emit(transform.position, NoiseCategory.Other, flipNoiseLoudness, this);
-            Debug.Log($"[Puzzle] {name} switched {(IsOn ? "on" : "off")}.", this);
+            GameLog.Info($"[Puzzle] {name} switched {(IsOn ? "on" : "off")}.", this);
 
             if (controller != null)
             {

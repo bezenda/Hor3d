@@ -270,6 +270,7 @@ namespace AshenWoods.EditorTools
             added += Stage4MenuBuilder.EnsureStage4Pieces();
             added += Stage5NoiseBuilder.EnsureStage5Pieces();
             added += Stage6ObjectiveBuilder.EnsureStage6Pieces();
+            added += Stage7FlowBuilder.EnsureStage7Pieces();
 
             added += EnsureExtraNavNodes();
             added += AlignStageObjects();
@@ -584,7 +585,9 @@ namespace AshenWoods.EditorTools
             moved += MoveObject("Key_Iron", new Vector3(-4.8f, 0.15f, -1.3f), null);
 
             // Breaker panel: upstairs study, on the north wall, switches facing into the room.
-            moved += MoveObject("BreakerPanel", new Vector3(-4f, 1.35f, -1.93f), Quaternion.identity);
+            // y = first floor (3.2) + 1.35. It used to be 1.35, which put the panel on the ground
+            // floor inside the roof of the living-room crouch tunnel.
+            moved += MoveObject("BreakerPanel", new Vector3(-4f, UpperFloor + 1.35f, -1.93f), Quaternion.identity);
 
             // Crowbar: inside the pantry, in front of the shelf.
             moved += MoveObject("Crowbar_Closet", new Vector3(5.2f, 0.16f, -1.1f), null);

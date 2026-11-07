@@ -124,7 +124,7 @@ namespace AshenWoods.Interaction
             IsSolved = true;
 
             NoiseSystem.Emit(transform.position, NoiseCategory.Other, solveNoiseLoudness, this);
-            Debug.Log($"[Puzzle] {name} solved with {SwitchesOn} switch(es) on.", this);
+            GameLog.Info($"[Puzzle] {name} solved with {SwitchesOn} switch(es) on.", this);
 
             Solved?.Invoke();
         }

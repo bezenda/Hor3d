@@ -103,7 +103,8 @@ namespace AshenWoods.EditorTools
             int addedCount = EnsurePlaygroundInActiveScene()
                              + Stage2InteractionBuilder.EnsureStage2Pieces()
                              + Stage3EnemyBuilder.EnsureStage3Pieces()
-                             + Stage6ObjectiveBuilder.EnsureStage6Pieces();
+                             + Stage6ObjectiveBuilder.EnsureStage6Pieces()
+                             + Stage7FlowBuilder.EnsureStage7Pieces();
 
             if (addedCount > 0)
             {

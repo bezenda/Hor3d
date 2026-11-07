@@ -229,7 +229,7 @@ namespace AshenWoods.Enemy
 
             if (Application.isPlaying && logGraphOnStart)
             {
-                Debug.Log(BuildGraphReport(false), this);
+                GameLog.Info(BuildGraphReport(false), this);
             }
         }
 

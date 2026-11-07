@@ -21,7 +21,7 @@ The full design brief this project is built against is at the bottom of this fil
 | 4 | Pause menu (freeze + release cursor), satchel screen, clickable buttons | Done |
 | 5 | Sound events, enemy hearing, investigate state, stealth noise, hiding noise | Done |
 | 6 | Breaker puzzle, objective chain (key → closet → crowbar → breaker → exit), front door, objective HUD | Done |
-| 7 | Death screen, restart, game-completed state, full UI | Not started |
+| 7 | Death screen, restart, completed screen, flashlight + batteries, dark house until the breaker, procedural sound, threat cues, enemy drags you out of a hiding place it saw you enter | Done |
 | 8 | Integration pass, playtest and fixes | Not started |
 
 Note: the brief's stages 2 and 3 are merged here (interaction + items + locks are all
@@ -41,9 +41,17 @@ Ashen Woods > Stages > Stage 3 - Enemy And Hiding Spots
 Ashen Woods > Stages > Stage 4 - Pause Menu And Inventory
 Ashen Woods > Stages > Stage 5 - Sound And Stealth
 Ashen Woods > Stages > Stage 6 - Objectives And Escape
+Ashen Woods > Stages > Stage 7 - Endings, Flashlight And Atmosphere
 
 Ashen Woods > Tuning > Apply Tuned Stealth Values
 Ashen Woods > Diagnostics > Log House Layout / Log House Overlap Check
+Ashen Woods > Diagnostics > Verbose Gameplay Logs      <- toggle; off by default
+```
+
+The house scene can also be rebuilt and saved without opening the editor:
+
+```
+Unity.exe -batchmode -quit -projectPath . -executeMethod AshenWoods.EditorTools.Stage7FlowBuilder.BuildHouseInBatchMode
 ```
 
 Each item is **additive and idempotent**: existing objects are reused, only missing pieces
@@ -101,6 +109,28 @@ need a new controller. `EscapeExit` is a dedicated interactable rather than a `D
 because the corridor's end wall is solid: the panel is the placeholder for a doorway that
 will be cut into a real level later.
 
+## Stage 7 - endings and atmosphere
+
+- **Endings.** `GameFlowController` (on `UI/FlowCanvas`) fades in at the start. Being caught
+  turns the screen red and shows *You were caught* (Try Again reloads the scene); forcing
+  the front door fades to black and shows *You escaped* with the time taken. The pause menu
+  is locked while an end screen is up.
+- **Darkness.** `HousePower` keeps every lamp at a faint, flickering glow and the ambient
+  light near black until the breaker puzzle is solved, then stutters the lamps back on.
+- **Flashlight.** F toggles a spot light on the camera (`PlayerFlashlight`). It drains in
+  about three minutes, flickers below 15 % and dies at 0. Three `BatteryPickup`s in the
+  house (kitchen counter, bedroom bed, bathroom floor) add 45 % each. Battery bar bottom-left.
+- **Sound.** All sounds are synthesised in code (`ProceduralAudio`), no audio files.
+  `NoiseSoundPlayer` plays every NoiseSystem event as a 3D sound, so the player hears exactly
+  what the enemy hears. `EnemyFootstepAudio` gives the enemy heavy steps audible through walls.
+- **Threat cues.** `ThreatFeedback` darkens the screen edges as an enemy gets close or starts
+  noticing you, turns them red in a chase, fades in a heartbeat that speeds up with danger,
+  plays a rising breath the moment an enemy starts noticing you and a sting when a chase starts.
+- **No safe wardrobe in plain sight.** Hiding while being chased, or while an enemy is
+  looking straight at you, no longer works: it walks to the wardrobe and drags you out.
+- **Quiet Console.** Gameplay trace logs go through `GameLog` and are off by default; turn
+  them on with *Diagnostics > Verbose Gameplay Logs*. Warnings and errors always show.
+
 ## Controls
 
 | Key | Action |
@@ -111,6 +141,8 @@ will be cut into a real level later.
 | C | Crouch (quiet) |
 | Space | Jump |
 | E | Use / pick up / hide / leave hiding place |
+| F | Flashlight on / off |
+| R | Restart (on the death and completed screens) |
 | Esc | Pause menu |
 | Tab | Satchel |
 

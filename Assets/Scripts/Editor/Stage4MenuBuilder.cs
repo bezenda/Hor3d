@@ -53,7 +53,8 @@ namespace AshenWoods.EditorTools
 
             int added = EnsureStage4Pieces()
                         + Stage5NoiseBuilder.EnsureStage5Pieces()
-                        + Stage6ObjectiveBuilder.EnsureStage6Pieces();
+                        + Stage6ObjectiveBuilder.EnsureStage6Pieces()
+                        + Stage7FlowBuilder.EnsureStage7Pieces();
 
             if (added > 0)
             {
@@ -97,6 +98,14 @@ namespace AshenWoods.EditorTools
                 scaler.referenceResolution = new Vector2(1920f, 1080f);
                 scaler.matchWidthOrHeight = 0.5f;
 
+                added++;
+            }
+
+            // Without a raycaster the buttons can be selected but never clicked. Early builds of
+            // this stage forgot it, so it is added to existing canvases too.
+            if (canvasObject.GetComponent<GraphicRaycaster>() == null)
+            {
+                canvasObject.AddComponent<GraphicRaycaster>();
                 added++;
             }
 
@@ -155,7 +164,7 @@ namespace AshenWoods.EditorTools
             CreateText(panel.transform, "Hint", "Esc  -  Resume              Tab  -  Satchel",
                 new Vector2(0f, -70f), new Vector2(900f, 50f), 26, DimTextColor);
             CreateText(panel.transform, "Controls",
-                "WASD  move      Shift  sprint      C  crouch      E  use      Mouse  look",
+                "WASD  move      Shift  sprint      C  crouch      E  use      F  flashlight      Mouse  look",
                 new Vector2(0f, -140f), new Vector2(1200f, 50f), 24, DimTextColor);
 
             panel.SetActive(false);
@@ -246,7 +255,7 @@ namespace AshenWoods.EditorTools
         }
 
         /// <summary>Full-screen dark panel that dims the game behind the menu.</summary>
-        private static GameObject CreateOverlay(Transform parent, string name)
+        internal static GameObject CreateOverlay(Transform parent, string name)
         {
             GameObject panel = new GameObject(name, typeof(RectTransform));
             panel.transform.SetParent(parent, false);
@@ -270,7 +279,7 @@ namespace AshenWoods.EditorTools
         /// A clickable button: a tinted Image with a label child. The image is the raycast
         /// target, the label is not, so the whole plate is clickable.
         /// </summary>
-        private static Button CreateButton(Transform parent, string name, string label, Vector2 anchoredPosition, Vector2 size)
+        internal static Button CreateButton(Transform parent, string name, string label, Vector2 anchoredPosition, Vector2 size)
         {
             GameObject buttonObject = new GameObject(name, typeof(RectTransform));
             buttonObject.transform.SetParent(parent, false);
@@ -294,7 +303,7 @@ namespace AshenWoods.EditorTools
             return button;
         }
 
-        private static Text CreateText(
+        internal static Text CreateText(
             Transform parent, string name, string content, Vector2 anchoredPosition,
             Vector2 size, int fontSize, Color color)
         {

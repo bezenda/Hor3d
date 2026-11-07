@@ -74,6 +74,12 @@ namespace AshenWoods.GameManagement
         /// <summary>True while any screen is up, so other systems can check without knowing which.</summary>
         public bool IsOpen => CurrentScreen != GameScreen.None;
 
+        /// <summary>
+        /// While locked, Esc and Tab do nothing. The game flow locks the menu when the death or
+        /// completed screen is up, so pausing cannot hide that screen or hand control back.
+        /// </summary>
+        public bool IsLocked { get; private set; }
+
         private bool frozen;
         private bool inputWasEnabled = true;
         private bool interactionWasEnabled = true;
@@ -119,7 +125,7 @@ namespace AshenWoods.GameManagement
             // that reader reports nothing while a screen is open, so it could never notice
             // the key press that closes the screen again.
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null)
+            if (keyboard == null || IsLocked)
             {
                 return;
             }
@@ -133,6 +139,17 @@ namespace AshenWoods.GameManagement
             {
                 Toggle(GameScreen.Inventory);
             }
+        }
+
+        /// <summary>Closes any open screen and stops (or allows again) Esc and Tab.</summary>
+        public void SetLocked(bool locked)
+        {
+            if (locked && IsOpen)
+            {
+                Close();
+            }
+
+            IsLocked = locked;
         }
 
         /// <summary>Opens a screen, closes it if it is already the one showing, or switches to it.</summary>
@@ -162,6 +179,11 @@ namespace AshenWoods.GameManagement
                 return;
             }
 
+            if (IsLocked)
+            {
+                return;
+            }
+
             if (!frozen)
             {
                 Freeze();
@@ -182,7 +204,7 @@ namespace AshenWoods.GameManagement
 
             if (logScreenChanges)
             {
-                Debug.Log($"[Menu] {screen} screen open, game time stopped.", this);
+                GameLog.Info($"[Menu] {screen} screen open, game time stopped.", this);
             }
         }
 
@@ -202,7 +224,7 @@ namespace AshenWoods.GameManagement
 
             if (wasOpen && logScreenChanges)
             {
-                Debug.Log("[Menu] Closed, game running.", this);
+                GameLog.Info("[Menu] Closed, game running.", this);
             }
         }
 
@@ -213,6 +235,7 @@ namespace AshenWoods.GameManagement
             // Remember a sane scale rather than 0, in case something else stopped time.
             timeScaleBeforePause = Time.timeScale > 0f ? Time.timeScale : 1f;
             Time.timeScale = 0f;
+            AudioListener.pause = true; // Heartbeat, footsteps and creaks stop with the game.
 
             if (input != null)
             {
@@ -233,6 +256,7 @@ namespace AshenWoods.GameManagement
         {
             frozen = false;
             Time.timeScale = timeScaleBeforePause;
+            AudioListener.pause = false;
 
             if (input != null)
             {

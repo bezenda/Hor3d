@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using AshenWoods.Enemy;
 using AshenWoods.Interaction;
@@ -11,9 +12,11 @@ namespace AshenWoods.Player
     /// This is the only file that knows both sides. The enemy never touches PlayerMotor or
     /// PlayerHidingController, which keeps the AI reusable for other scenes and other games.
     ///
-    /// Caught behaviour is a placeholder for the death and restart stage: the player is put
-    /// back at the spot they started the scene in, stays locked out of input for a moment,
-    /// and the Console records what happened.
+    /// When something listens to <see cref="Caught"/> (the Stage 7 GameFlowController) and
+    /// <see cref="RespawnOnCaught"/> is off, a catch ends the run: the player is pulled out of
+    /// any hiding place, turned to face the enemy and taken out of play. Without a listener the
+    /// old placeholder still applies - back to the spawn point after a short lock-out - so the
+    /// legacy playground keeps working on its own.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class PlayerEnemyTarget : MonoBehaviour, IEnemyTarget
@@ -36,27 +39,41 @@ namespace AshenWoods.Player
         [Tooltip("Used only when no Aim Point is assigned.")]
         [SerializeField, Min(0.2f)] private float aimHeight = 1.5f;
 
-        [Header("Caught (placeholder)")]
+        [Header("Caught without a game flow (placeholder)")]
         [Tooltip("Seconds of lost control after being caught.")]
         [SerializeField, Min(0f)] private float caughtLockSeconds = 1.2f;
 
         [SerializeField] private string caughtMessage = "Caught!";
+
+        /// <summary>Raised once per catch with the enemy's position.</summary>
+        public event Action<Vector3> Caught;
+
+        /// <summary>
+        /// True (default): a catch sends the player back to the spawn point. The game flow turns
+        /// this off because it shows the death screen and restarts the scene instead.
+        /// </summary>
+        public bool RespawnOnCaught { get; set; } = true;
 
         public Transform TargetRoot => transform;
 
         public Vector3 AimPoint =>
             aimPoint != null ? aimPoint.position : transform.position + Vector3.up * aimHeight;
 
-        public bool IsHiddenFromEnemy => (hiding != null && hiding.IsHidden) || HasEscaped;
+        public bool IsHiddenFromEnemy => hiding != null && hiding.IsHidden;
 
-        // Once the front door gives way the run is won. Until the death/completed stage adds
-        // a proper end screen, the player simply stops being a target, so the loud escape
-        // noise cannot bring the enemy over to "catch" a winner back to the spawn point.
+        public bool IsOutOfPlay => outOfPlay || HasEscaped;
+
+        public Vector3 ApproachPoint =>
+            hiding != null && hiding.IsHidden ? hiding.ReturnPosition : transform.position;
+
+        // Once the front door gives way the run is won, so the loud escape noise cannot bring
+        // the enemy over to catch a winner.
         private bool HasEscaped => escapeExit != null && escapeExit.HasEscaped;
 
         private Vector3 spawnPosition;
         private Quaternion spawnRotation;
         private float lockRemaining;
+        private bool outOfPlay;
 
         private void Awake()
         {
@@ -99,8 +116,6 @@ namespace AshenWoods.Player
                 }
             }
 
-            // Where the scene starts the player is a good enough respawn point until the
-            // death and restart stage adds proper level checkpoints.
             spawnPosition = transform.position;
             spawnRotation = transform.rotation;
         }
@@ -120,16 +135,40 @@ namespace AshenWoods.Player
             }
         }
 
+        /// <summary>Takes the player out of (or back into) play. Used by the game flow.</summary>
+        public void SetOutOfPlay(bool value)
+        {
+            outOfPlay = value;
+        }
+
         public void NotifyCaught(Vector3 enemyPosition)
         {
-            if (IsHiddenFromEnemy)
+            if (IsOutOfPlay)
             {
-                return; // Defensive: an enemy must never catch a hidden player.
+                return;
             }
 
-            if (hiding != null && hiding.IsHidden)
+            bool pulledOut = hiding != null && hiding.IsHidden;
+            if (pulledOut)
             {
                 hiding.Leave();
+            }
+
+            GameLog.Info($"[Caught] Enemy reached the player at {enemyPosition}" +
+                         (pulledOut ? " and dragged them out of hiding." : "."), this);
+
+            if (!RespawnOnCaught)
+            {
+                outOfPlay = true;
+
+                if (input != null)
+                {
+                    input.SetInputEnabled(false);
+                }
+
+                FaceTowards(enemyPosition);
+                Caught?.Invoke(enemyPosition);
+                return;
             }
 
             ReturnToSpawn();
@@ -146,8 +185,30 @@ namespace AshenWoods.Player
                 interactor.ShowFeedback(caughtMessage);
             }
 
-            Debug.Log($"[Caught] Enemy reached the player at {enemyPosition}. " +
-                      "Returning to the spawn point (placeholder until the death stage).", this);
+            Caught?.Invoke(enemyPosition);
+        }
+
+        /// <summary>Snaps the view onto the enemy, so the last thing seen is what caught you.</summary>
+        private void FaceTowards(Vector3 worldPoint)
+        {
+            Vector3 flat = worldPoint - transform.position;
+            flat.y = 0f;
+
+            if (flat.sqrMagnitude < 0.0001f)
+            {
+                return;
+            }
+
+            Quaternion facing = Quaternion.LookRotation(flat, Vector3.up);
+
+            if (look != null)
+            {
+                look.SnapToRotation(facing);
+            }
+            else
+            {
+                transform.rotation = facing;
+            }
         }
 
         private void ReturnToSpawn()

@@ -178,7 +178,7 @@ namespace AshenWoods.Enemy
 
             if (logHeardNoises)
             {
-                Debug.Log(
+                GameLog.Info(
                     $"[Hearing] Heard {noise.Category} from {distance:0.0} m away " +
                     $"(audible range {audibleRange:0.0} m).", this);
             }

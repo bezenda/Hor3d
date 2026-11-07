@@ -157,7 +157,7 @@ namespace AshenWoods.GameManagement
 
             if (logChanges && HasSteps)
             {
-                Debug.Log($"[Objectives] First objective: '{CurrentObjectiveId}' - {CurrentDescription}", this);
+                GameLog.Info($"[Objectives] First objective: '{CurrentObjectiveId}' - {CurrentDescription}", this);
             }
         }
 
@@ -247,7 +247,7 @@ namespace AshenWoods.GameManagement
             {
                 if (logChanges)
                 {
-                    Debug.Log(
+                    GameLog.Info(
                         $"[Objectives] Ignored report '{objectiveId}': the current objective is " +
                         $"'{step.id}'. Objectives cannot be finished out of order.", this);
                 }
@@ -269,7 +269,7 @@ namespace AshenWoods.GameManagement
 
             if (logChanges)
             {
-                Debug.Log($"[Objectives] Chain reset. First objective: '{CurrentObjectiveId}'.", this);
+                GameLog.Info($"[Objectives] Chain reset. First objective: '{CurrentObjectiveId}'.", this);
             }
 
             ObjectiveChanged?.Invoke(CurrentStep);
@@ -283,7 +283,7 @@ namespace AshenWoods.GameManagement
             if (logChanges)
             {
                 string next = IsComplete ? "chain complete" : $"next '{CurrentObjectiveId}'";
-                Debug.Log($"[Objectives] '{finished.id}' complete ({next}).", this);
+                GameLog.Info($"[Objectives] '{finished.id}' complete ({next}).", this);
             }
 
             ObjectiveChanged?.Invoke(CurrentStep);

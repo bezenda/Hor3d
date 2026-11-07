@@ -99,7 +99,7 @@ namespace AshenWoods.Interaction
 
             if (!IsPowered)
             {
-                Debug.Log($"[Escape] {name} refused: the latch has no power.", this);
+                GameLog.Info($"[Escape] {name} refused: the latch has no power.", this);
                 return lockedMessage;
             }
 
@@ -113,7 +113,7 @@ namespace AshenWoods.Interaction
             }
 
             NoiseSystem.Emit(transform.position, NoiseCategory.Other, escapeNoiseLoudness, this);
-            Debug.Log($"[Escape] {name} opened. The player is out.", this);
+            GameLog.Info($"[Escape] {name} opened. The player is out.", this);
 
             Escaped?.Invoke();
             return escapedMessage;

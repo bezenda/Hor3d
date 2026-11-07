@@ -120,12 +120,23 @@ namespace AshenWoods.Enemy
         [Tooltip("Degrees per second turned while searching.")]
         [SerializeField, Range(0f, 180f)] private float searchLookAroundSpeed = 65f;
 
-        [Header("Caught (placeholder until the death and restart stage)")]
+        [Header("Hiding In Plain Sight")]
+        [Tooltip("A target that hides while being chased, or while this enemy is looking straight " +
+                 "at it, is not safe: the enemy walks to the hiding place and drags it out. This is " +
+                 "how long after last seeing the target a hide still counts as 'seen'.")]
+        [SerializeField, Min(0f)] private float seenHidingGraceSeconds = 0.75f;
+
+        [Tooltip("How close to the front of a hiding place the enemy has to get to pull the " +
+                 "target out, in metres.")]
+        [SerializeField, Min(0.2f)] private float pullOutRadius = 1.3f;
+
+        [Header("Caught")]
         [Tooltip("Seconds the enemy stands still after catching the target.")]
         [SerializeField, Min(0f)] private float caughtHoldSeconds = 1.8f;
 
         [Header("Debug")]
-        [Tooltip("Logs every state change and catch to the Console.")]
+        [Tooltip("Logs every state change and catch to the Console (only while " +
+                 "Ashen Woods > Diagnostics > Verbose Gameplay Logs is on).")]
         [SerializeField] private bool logStateChanges = true;
 
         /// <summary>Current state. Read-only for other systems and for the visual cue.</summary>
@@ -133,6 +144,31 @@ namespace AshenWoods.Enemy
 
         /// <summary>True on frames where the target is in the enemy's line of sight.</summary>
         public bool CanSeeTarget { get; private set; }
+
+        /// <summary>
+        /// 0 while the target is unseen, rising to 1 as the enemy notices it, 1 while chasing.
+        /// The player-side warning cues (vignette, heartbeat) read this.
+        /// </summary>
+        public float Alertness
+        {
+            get
+            {
+                if (State == EnemyState.Chase)
+                {
+                    return 1f;
+                }
+
+                if (!CanSeeTarget)
+                {
+                    return 0f;
+                }
+
+                return noticeSeconds <= 0f ? 1f : Mathf.Clamp01(visibilityTimer / noticeSeconds);
+            }
+        }
+
+        /// <summary>True while the enemy is heading for a hiding place it saw the target enter.</summary>
+        public bool IsHuntingHiddenTarget => huntingHiddenTarget;
 
         /// <summary>Raised whenever the state changes. Drives the placeholder colour cue.</summary>
         public event Action<EnemyState> StateChanged;
@@ -154,6 +190,11 @@ namespace AshenWoods.Enemy
         private Vector3 lastPlannedDestination;
         private float wakeRemaining;
         private bool sensesActive;
+        private bool targetWasHidden;
+        private bool huntingHiddenTarget;
+        private float huntRemaining;     // time left to reach a hiding place before giving up
+
+        private const float HuntGiveUpSeconds = 15f;
 
         private void Awake()
         {
@@ -194,7 +235,7 @@ namespace AshenWoods.Enemy
 
             if (!sensesActive && logStateChanges)
             {
-                Debug.Log($"[Enemy] Waking up: sight and hearing are off for {wakeRemaining:0.0} s.", this);
+                GameLog.Info($"[Enemy] Waking up: sight and hearing are off for {wakeRemaining:0.0} s.", this);
             }
 
             EnterPatrol();
@@ -256,18 +297,22 @@ namespace AshenWoods.Enemy
 
             if (logStateChanges)
             {
-                Debug.Log("[Enemy] Waking up: sight and hearing are live.", this);
+                GameLog.Info("[Enemy] Waking up: sight and hearing are live.", this);
             }
         }
 
         private void UpdateSenses(float deltaTime)
         {
-            if (!sensesActive)
+            if (!sensesActive || target.IsOutOfPlay)
             {
                 CanSeeTarget = false;
                 visibilityTimer = 0f;
+                huntingHiddenTarget = false;
+                targetWasHidden = target.IsHiddenFromEnemy;
                 return;
             }
+
+            TrackHiding();
 
             CanSeeTarget = !target.IsHiddenFromEnemy
                            && vision.CanSee(target.TargetRoot, target.AimPoint);
@@ -285,6 +330,50 @@ namespace AshenWoods.Enemy
         }
 
         private bool HasNoticedTarget => CanSeeTarget && visibilityTimer >= noticeSeconds;
+
+        /// <summary>
+        /// Notices the moment the target climbs into a hiding place. Runs before this frame's
+        /// sight check, so the timers still describe the previous frame: was the target in view
+        /// a moment ago, and was this enemy already after it?
+        /// </summary>
+        private void TrackHiding()
+        {
+            bool hidden = target.IsHiddenFromEnemy;
+
+            if (hidden && !targetWasHidden)
+            {
+                bool watched = State == EnemyState.Chase
+                    ? CanSeeTarget || unseenTimer <= seenHidingGraceSeconds
+                    : CanSeeTarget; // A patrolling enemy has to be looking right at it.
+
+                if (watched)
+                {
+                    huntingHiddenTarget = true;
+                    huntRemaining = HuntGiveUpSeconds;
+
+                    if (navigation != null)
+                    {
+                        navigation.Stop(); // Drop the route to where it was last seen.
+                    }
+
+                    if (logStateChanges)
+                    {
+                        GameLog.Info("[Enemy] Saw the target hide. Coming to drag it out.", this);
+                    }
+
+                    if (State != EnemyState.Chase)
+                    {
+                        EnterChase();
+                    }
+                }
+            }
+            else if (!hidden)
+            {
+                huntingHiddenTarget = false;
+            }
+
+            targetWasHidden = hidden;
+        }
 
         // ------------------------------------------------------------------ patrol
 
@@ -339,6 +428,18 @@ namespace AshenWoods.Enemy
 
         private void UpdateChase(float deltaTime)
         {
+            if (target.IsOutOfPlay)
+            {
+                EnterSearch();
+                return;
+            }
+
+            if (huntingHiddenTarget)
+            {
+                UpdateHuntHidden(deltaTime);
+                return;
+            }
+
             float distanceToTarget = Vector3.Distance(transform.position, target.TargetRoot.position);
 
             if (CanSeeTarget && distanceToTarget <= catchRadius)
@@ -384,6 +485,64 @@ namespace AshenWoods.Enemy
             {
                 navigation.TurnTowards(target.TargetRoot.position, deltaTime);
             }
+        }
+
+        /// <summary>
+        /// The target hid while this enemy was watching. Walk to the front of the hiding place
+        /// and pull it out. Gives up (and searches) if the spot cannot be reached in time.
+        /// </summary>
+        private void UpdateHuntHidden(float deltaTime)
+        {
+            Vector3 approach = target.ApproachPoint;
+            Vector3 flat = approach - transform.position;
+            flat.y = 0f;
+
+            bool sameFloor = Mathf.Abs(approach.y - transform.position.y) < 1.2f;
+            if (sameFloor && flat.magnitude <= pullOutRadius)
+            {
+                EnterCaught();
+                return;
+            }
+
+            huntRemaining -= deltaTime;
+
+            if (navigation == null || huntRemaining <= 0f)
+            {
+                GiveUpHunt();
+                return;
+            }
+
+            if (!navigation.HasPath)
+            {
+                lastPlannedDestination = approach;
+
+                if (!RequestDestination(approach))
+                {
+                    GiveUpHunt();
+                    return;
+                }
+            }
+
+            navigation.MoveAlongPath(chaseSpeed, deltaTime);
+            TryOpenDoorAhead();
+
+            if (navigation.IsStuck)
+            {
+                navigation.Stop(); // Re-plan next frame from wherever the shove left us.
+            }
+        }
+
+        private void GiveUpHunt()
+        {
+            huntingHiddenTarget = false;
+
+            if (logStateChanges)
+            {
+                GameLog.Info("[Enemy] Could not reach the hiding place. Searching instead.", this);
+            }
+
+            lastKnownPoint = target.ApproachPoint;
+            EnterSearch();
         }
 
         // ------------------------------------------------------------------ search
@@ -522,6 +681,7 @@ namespace AshenWoods.Enemy
         private void EnterPatrol()
         {
             SetState(EnemyState.Patrol);
+            huntingHiddenTarget = false;
             visibilityTimer = 0f;
             unseenTimer = 0f;
             pauseRemaining = 0f;
@@ -547,6 +707,7 @@ namespace AshenWoods.Enemy
         private void EnterSearch()
         {
             SetState(EnemyState.Search);
+            huntingHiddenTarget = false;
             visibilityTimer = 0f;
             searchRemaining = 0f;
 
@@ -581,7 +742,7 @@ namespace AshenWoods.Enemy
 
             if (logStateChanges)
             {
-                Debug.Log(
+                GameLog.Info(
                     $"[Enemy] Heard {category} (loudness {loudness:0.00}) at {position}; investigating.", this);
             }
 
@@ -606,8 +767,9 @@ namespace AshenWoods.Enemy
         private void EnterCaught()
         {
             SetState(EnemyState.Caught);
+            huntingHiddenTarget = false;
             caughtRemaining = caughtHoldSeconds;
-            catchPoint = target.TargetRoot.position;
+            catchPoint = target.ApproachPoint; // In front of the wardrobe when dragging the target out.
 
             if (navigation != null)
             {
@@ -616,7 +778,7 @@ namespace AshenWoods.Enemy
 
             if (logStateChanges)
             {
-                Debug.Log($"[Enemy] Caught the target at {target.TargetRoot.position}.", this);
+                GameLog.Info($"[Enemy] Caught the target at {target.TargetRoot.position}.", this);
             }
 
             target.NotifyCaught(transform.position);
@@ -633,7 +795,7 @@ namespace AshenWoods.Enemy
 
             if (logStateChanges)
             {
-                Debug.Log($"[Enemy] State -> {state}.", this);
+                GameLog.Info($"[Enemy] State -> {state}.", this);
             }
 
             StateChanged?.Invoke(state);
@@ -676,7 +838,7 @@ namespace AshenWoods.Enemy
 
             if (logStateChanges)
             {
-                Debug.Log($"[Enemy] Forced {door.name} open to keep chasing.", this);
+                GameLog.Info($"[Enemy] Forced {door.name} open to keep chasing.", this);
             }
         }
 

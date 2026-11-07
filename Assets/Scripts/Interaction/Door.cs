@@ -108,12 +108,12 @@ namespace AshenWoods.Interaction
             {
                 if (!HasKey(actor))
                 {
-                    Debug.Log($"[Door] {name} refused: locked and '{requiredKeyId}' is not carried.", this);
+                    GameLog.Info($"[Door] {name} refused: locked and '{requiredKeyId}' is not carried.", this);
                     return lockedMessage;
                 }
 
                 isLocked = false;
-                Debug.Log($"[Door] {name} unlocked with '{requiredKeyId}'.", this);
+                GameLog.Info($"[Door] {name} unlocked with '{requiredKeyId}'.", this);
             }
 
             if (State == DoorState.Open)
@@ -135,7 +135,7 @@ namespace AshenWoods.Interaction
             }
 
             isLocked = false;
-            Debug.Log($"[Door] {name} unlocked by script.", this);
+            GameLog.Info($"[Door] {name} unlocked by script.", this);
         }
 
         private bool HasKey(IInteractionActor actor)
@@ -150,7 +150,7 @@ namespace AshenWoods.Interaction
             targetProgress = 1f;
             State = DoorState.Opening;
             EmitNoise(openNoiseLoudness);
-            Debug.Log($"[Door] {name} opening.", this);
+            GameLog.Info($"[Door] {name} opening.", this);
         }
 
         private void BeginClose()
@@ -158,7 +158,7 @@ namespace AshenWoods.Interaction
             targetProgress = 0f;
             State = DoorState.Closing;
             EmitNoise(noisyWhenClosing ? openNoiseLoudness * 0.6f : 0f);
-            Debug.Log($"[Door] {name} closing.", this);
+            GameLog.Info($"[Door] {name} closing.", this);
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace AshenWoods.Interaction
                 bool isOpen = targetProgress > 0.5f;
                 hinge.localRotation = isOpen ? openRotation : closedRotation;
                 State = isOpen ? DoorState.Open : DoorState.Closed;
-                Debug.Log($"[Door] {name} {(isOpen ? "open" : "closed")}.", this);
+                GameLog.Info($"[Door] {name} {(isOpen ? "open" : "closed")}.", this);
             }
         }
     }

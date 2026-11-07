@@ -32,7 +32,7 @@ namespace AshenWoods.Player
             }
 
             keys.Add(keyId);
-            Debug.Log($"[Keys] Collected '{keyId}'. Now carrying: {string.Join(", ", keys)}", this);
+            GameLog.Info($"[Keys] Collected '{keyId}'. Now carrying: {string.Join(", ", keys)}", this);
             return true;
         }
 

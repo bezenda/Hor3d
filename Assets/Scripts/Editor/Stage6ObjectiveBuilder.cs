@@ -77,7 +77,8 @@ namespace AshenWoods.EditorTools
                         + Stage3EnemyBuilder.EnsureStage3Pieces()
                         + Stage4MenuBuilder.EnsureStage4Pieces()
                         + Stage5NoiseBuilder.EnsureStage5Pieces()
-                        + EnsureStage6Pieces();
+                        + EnsureStage6Pieces()
+                        + Stage7FlowBuilder.EnsureStage7Pieces();
 
             if (added > 0)
             {

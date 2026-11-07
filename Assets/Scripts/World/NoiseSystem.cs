@@ -132,7 +132,7 @@ namespace AshenWoods.World
             if (logNoises)
             {
                 string from = source != null ? " from " + source.name : string.Empty;
-                Debug.Log($"[Noise] {noise}{from}.", this);
+                GameLog.Info($"[Noise] {noise}{from}.", this);
             }
 
             NoiseEmitted?.Invoke(noise);

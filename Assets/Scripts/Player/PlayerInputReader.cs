@@ -35,6 +35,9 @@ namespace AshenWoods.Player
         public bool JumpPressed { get; private set; }
         public bool InteractPressed { get; private set; }
 
+        /// <summary>True on the frame the flashlight button (F, or the gamepad's north button) went down.</summary>
+        public bool FlashlightPressed { get; private set; }
+
         /// <summary>
         /// When false the reader reports no intent at all. Game state (pause, caught,
         /// completed) will drive this in later stages instead of every system checking
@@ -89,6 +92,7 @@ namespace AshenWoods.Player
             CrouchPressed = false;
             JumpPressed = false;
             InteractPressed = false;
+            FlashlightPressed = false;
 
             ReadKeyboard(Keyboard.current);
             ReadGamepad(Gamepad.current);
@@ -116,6 +120,7 @@ namespace AshenWoods.Player
             CrouchPressed |= keyboard.cKey.wasPressedThisFrame;
             JumpPressed |= keyboard.spaceKey.wasPressedThisFrame;
             InteractPressed |= keyboard.eKey.wasPressedThisFrame;
+            FlashlightPressed |= keyboard.fKey.wasPressedThisFrame;
         }
 
         private void ReadGamepad(Gamepad gamepad)
@@ -136,6 +141,7 @@ namespace AshenWoods.Player
             CrouchPressed |= gamepad.buttonEast.wasPressedThisFrame;
             JumpPressed |= gamepad.buttonSouth.wasPressedThisFrame;
             InteractPressed |= gamepad.buttonWest.wasPressedThisFrame;
+            FlashlightPressed |= gamepad.buttonNorth.wasPressedThisFrame;
         }
 
         private void ReadLook(Gamepad gamepad, Mouse mouse)
@@ -169,6 +175,7 @@ namespace AshenWoods.Player
             CrouchPressed = false;
             JumpPressed = false;
             InteractPressed = false;
+            FlashlightPressed = false;
         }
     }
 }

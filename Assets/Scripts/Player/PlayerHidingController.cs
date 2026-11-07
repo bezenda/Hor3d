@@ -35,6 +35,12 @@ namespace AshenWoods.Player
         /// <summary>The spot the player is inside, or null.</summary>
         public HidingSpot CurrentSpot { get; private set; }
 
+        /// <summary>
+        /// Where the player stood before climbing in, and where Leave puts them back. Always
+        /// walkable, so an enemy that saw the player hide walks here to drag them out.
+        /// </summary>
+        public Vector3 ReturnPosition => returnPosition;
+
         private Vector3 returnPosition;
         private Quaternion returnRotation;
 
@@ -107,7 +113,7 @@ namespace AshenWoods.Player
             // The cupboard door and the shuffle inside are audible; a hasty hide is not free.
             NoiseSystem.Emit(spot.HidePoint.position, NoiseCategory.Hiding, enterNoiseLoudness, this);
 
-            Debug.Log($"[Hiding] Player hid inside {spot.name}.", this);
+            GameLog.Info($"[Hiding] Player hid inside {spot.name}.", this);
         }
 
         /// <summary>Puts the player back where they were standing before hiding.</summary>
@@ -156,7 +162,7 @@ namespace AshenWoods.Player
             {
                 spot.SetOccupant(null);
                 NoiseSystem.Emit(spot.HidePoint.position, NoiseCategory.Hiding, leaveNoiseLoudness, this);
-                Debug.Log($"[Hiding] Player left {spot.name}.", this);
+                GameLog.Info($"[Hiding] Player left {spot.name}.", this);
             }
         }
     }

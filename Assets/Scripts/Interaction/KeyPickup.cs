@@ -70,7 +70,7 @@ namespace AshenWoods.Interaction
 
             actor.GiveKey(keyId);
             NoiseSystem.Emit(transform.position, NoiseCategory.Item, pickupNoiseLoudness, this);
-            Debug.Log($"[KeyPickup] Took '{keyId}' ({displayName}) at {transform.position}.", this);
+            GameLog.Info($"[KeyPickup] Took '{keyId}' ({displayName}) at {transform.position}.", this);
             Destroy(gameObject);
 
             return "Picked up the " + displayName + ".";

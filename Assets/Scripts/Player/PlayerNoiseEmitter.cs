@@ -72,7 +72,7 @@ namespace AshenWoods.Player
 
             if (logEmittedNoise && raised)
             {
-                Debug.Log($"[PlayerNoise] {category} loudness {loudness:0.00}.", this);
+                GameLog.Info($"[PlayerNoise] {category} loudness {loudness:0.00}.", this);
             }
         }
     }

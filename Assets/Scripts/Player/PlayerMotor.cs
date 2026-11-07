@@ -399,7 +399,7 @@ namespace AshenWoods.Player
 
             if (logFootstepEvents)
             {
-                Debug.Log($"[Footstep] {gait} loudness={loudness:0.00} at {footstep.Position}", this);
+                GameLog.Info($"[Footstep] {gait} loudness={loudness:0.00} at {footstep.Position}", this);
             }
         }
 
