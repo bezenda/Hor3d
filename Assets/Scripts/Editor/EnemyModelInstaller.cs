@@ -87,6 +87,19 @@ namespace AshenWoods.EditorTools
                 }
             }
 
+            // Animation files may also sit next to the controller, in Assets/Animations/Enemy.
+            if (AssetDatabase.IsValidFolder(EnemyAnimationSetup.ControllerFolderPath))
+            {
+                foreach (string guid in AssetDatabase.FindAssets("t:Model", new[] { EnemyAnimationSetup.ControllerFolderPath }))
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (path != character && !animationFiles.Contains(path))
+                    {
+                        animationFiles.Add(path);
+                    }
+                }
+            }
+
             if (character == null)
             {
                 report.AppendLine("No model with meshes found in " + ModelFolder + ".");
@@ -145,7 +158,8 @@ namespace AshenWoods.EditorTools
                 report.AppendLine("The model has a skeleton but no movement animations, so the enemy will glide in its");
                 report.AppendLine("default pose. Download Idle, Walking, Running and an attack/scream from mixamo.com");
                 report.AppendLine("(FBX for Unity, Without Skin, tick In Place), name the files idle / walk / run / attack,");
-                report.AppendLine("drop them into " + ModelFolder + " and run this menu item again.");
+                report.AppendLine("drop them into " + ModelFolder + " or " + EnemyAnimationSetup.ControllerFolderPath +
+                                  " and run this menu item again.");
             }
 
             ok = true;
@@ -205,6 +219,39 @@ namespace AshenWoods.EditorTools
             else
             {
                 report.AppendLine("Rig: Humanoid, avatar OK.");
+            }
+        }
+
+        /// <summary>
+        /// Imports every mesh-less model file (a Mixamo "Without Skin" download) in the model and
+        /// animation folders as Humanoid. Mixamo files arrive as Generic, and Generic clips do not
+        /// play on a Humanoid character - they show up as "(none)" in the setup report.
+        /// </summary>
+        internal static void PrepareAnimationFiles(System.Text.StringBuilder report)
+        {
+            var folders = new List<string>();
+            foreach (string folder in new[] { ModelFolder, EnemyAnimationSetup.ControllerFolderPath })
+            {
+                if (AssetDatabase.IsValidFolder(folder))
+                {
+                    folders.Add(folder);
+                }
+            }
+
+            if (folders.Count == 0)
+            {
+                return;
+            }
+
+            foreach (string guid in AssetDatabase.FindAssets("t:Model", folders.ToArray()))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+                if (asset != null && asset.GetComponentsInChildren<Renderer>(true).Length == 0)
+                {
+                    ConfigureAnimationImport(path, report);
+                }
             }
         }
 

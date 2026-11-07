@@ -109,3 +109,5 @@ InitTestScene*.unity*
 # Owner's own third-party art: kept local, never pushed.
 /[Aa]ssets/Models/
 /[Aa]ssets/Models.meta
+/[Aa]ssets/Animations/
+/[Aa]ssets/Animations.meta

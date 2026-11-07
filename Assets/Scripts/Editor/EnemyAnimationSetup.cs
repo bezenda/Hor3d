@@ -25,6 +25,9 @@ namespace AshenWoods.EditorTools
         private const string MenuPath = "Ashen Woods/Enemy/Set Up Enemy Animations";
         private const string ControllerFolder = "Assets/Animations/Enemy";
         private const string ControllerPath = ControllerFolder + "/Enemy.controller";
+
+        /// <summary>Where the controller lives; animation files dropped here are found too.</summary>
+        internal const string ControllerFolderPath = ControllerFolder;
         private const string LocomotionStateName = "Locomotion";
         private const string CaughtStateName = "Caught";
 
@@ -67,6 +70,10 @@ namespace AshenWoods.EditorTools
                 return;
             }
 
+            // Mixamo files arrive as Generic; make them Humanoid before looking for clips.
+            var prepared = new System.Text.StringBuilder();
+            EnemyModelInstaller.PrepareAnimationFiles(prepared);
+
             var loopClips = new List<AnimationClip>();
             string report;
             bool ok;
@@ -91,6 +98,7 @@ namespace AshenWoods.EditorTools
                 SetLooping(clip);
             }
 
+            report = prepared + report;
             Debug.Log("[Enemy Animations]\n" + report);
             EditorUtility.DisplayDialog(ok ? "Enemy animations set up" : "Enemy animations not set up", report, "OK");
         }
@@ -274,12 +282,24 @@ namespace AshenWoods.EditorTools
                 return clips;
             }
 
-            string folder = Path.GetDirectoryName(modelPath)?.Replace('\\', '/');
-            var paths = new HashSet<string> { modelPath };
+            // Next to the model, and next to the controller: both are natural places to drop clips.
+            var folders = new List<string>();
+            string modelFolder = Path.GetDirectoryName(modelPath)?.Replace('\\', '/');
 
-            if (!string.IsNullOrEmpty(folder))
+            if (!string.IsNullOrEmpty(modelFolder))
             {
-                foreach (string guid in AssetDatabase.FindAssets("t:AnimationClip t:Model", new[] { folder }))
+                folders.Add(modelFolder);
+            }
+
+            if (AssetDatabase.IsValidFolder(ControllerFolder) && !folders.Contains(ControllerFolder))
+            {
+                folders.Add(ControllerFolder);
+            }
+
+            var paths = new HashSet<string> { modelPath };
+            if (folders.Count > 0)
+            {
+                foreach (string guid in AssetDatabase.FindAssets("t:AnimationClip t:Model", folders.ToArray()))
                 {
                     paths.Add(AssetDatabase.GUIDToAssetPath(guid));
                 }
