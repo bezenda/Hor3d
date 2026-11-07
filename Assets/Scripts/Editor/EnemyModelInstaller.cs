@@ -285,7 +285,10 @@ namespace AshenWoods.EditorTools
 
                     if (forward.sqrMagnitude > 0.01f)
                     {
+                        // Snap to a quarter turn: a model only ever arrives facing an axis, and a
+                        // posed rest pose (crossed legs, a step) would otherwise skew it by degrees.
                         float yaw = Vector3.SignedAngle(forward, visuals.forward, Vector3.up);
+                        yaw = Mathf.Round(yaw / 90f) * 90f;
                         modelTransform.localRotation = Quaternion.Euler(0f, yaw, 0f);
                     }
                 }
@@ -337,23 +340,47 @@ namespace AshenWoods.EditorTools
             return true;
         }
 
-        /// <summary>Bounds of the meshes in their bind pose (skinned bounds are unreliable before the first frame).</summary>
+        /// <summary>
+        /// Bounds of what is actually drawn, in the bind pose. Hidden and empty renderers are
+        /// skipped: Blender rigs export dozens of control shapes (cs_*, CTRL_*, WGT.*) as disabled
+        /// or vertex-less renderers, and counting them made a 1.8 m character measure 3.7 m wide.
+        /// </summary>
         internal static Bounds MeshBounds(GameObject model)
         {
             bool any = false;
             var bounds = new Bounds();
 
-            foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>(true))
+            foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>(false))
             {
+                if (!renderer.enabled)
+                {
+                    continue;
+                }
+
                 Bounds rendererBounds;
 
-                if (renderer is SkinnedMeshRenderer skinned && skinned.sharedMesh != null)
+                if (renderer is SkinnedMeshRenderer skinned)
                 {
+                    if (skinned.sharedMesh == null || skinned.sharedMesh.vertexCount == 0)
+                    {
+                        continue;
+                    }
+
                     rendererBounds = TransformBounds(skinned.transform, skinned.sharedMesh.bounds);
+                }
+                else if (renderer is MeshRenderer)
+                {
+                    MeshFilter filter = renderer.GetComponent<MeshFilter>();
+                    if (filter == null || filter.sharedMesh == null || filter.sharedMesh.vertexCount == 0)
+                    {
+                        continue;
+                    }
+
+                    rendererBounds = renderer.bounds;
                 }
                 else
                 {
-                    rendererBounds = renderer.bounds;
+                    continue;
                 }
 
                 if (!any)
