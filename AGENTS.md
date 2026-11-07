@@ -6,8 +6,13 @@ bitten previous contributors.
 
 ## Ground rules
 
-- **Placeholders only.** Built-in primitives, flat colour materials, no imported assets, no
-  new packages.
+- **Placeholders, except the owner's own art.** Builders only create primitives and flat
+  colour materials, and no new packages are added. The owner may drop their own models into
+  `Assets/Models/` (the enemy model goes under the enemy prefab's `Visuals`); code must keep
+  working with the placeholder capsule as well.
+- **Never overwrite the enemy prefab's visuals.** `Stage3EnemyBuilder` returns an existing
+  `Enemy_Patroller.prefab` untouched; keep it that way. `Ashen Woods > Enemy > Set Up Enemy
+  Animations` is the only tool that edits it, and only adds Animator/EnemyAnimator wiring.
 - **Never depend on a visual.** Gameplay components reference transforms and interfaces, not
   mesh types. The `Visuals` child is always disposable.
 - **Builders are the only way objects get authored.** Do not ask the user to hand-place
@@ -42,6 +47,7 @@ The menu tree is grouped, and the group is part of the interface - keep it:
 Ashen Woods / Level              Create Two-Storey House Scene, Build Or Update The House
 Ashen Woods / Stages             Stage 2..7 + Rewrite Objective Chain
 Ashen Woods / Legacy Playground  Create Playground Scene, Add Missing Pieces, Build The East Wing
+Ashen Woods / Enemy              Set Up Enemy Animations (after dropping a model under Visuals)
 Ashen Woods / Tuning             Apply Tuned Stealth Values
 Ashen Woods / Diagnostics        House layout, overlap check, nav graph, stealth, objectives, wing,
                                  Verbose Gameplay Logs (toggle)

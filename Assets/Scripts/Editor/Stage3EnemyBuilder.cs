@@ -23,7 +23,7 @@ namespace AshenWoods.EditorTools
     public static class Stage3EnemyBuilder
     {
         // Prefab assets.
-        private const string EnemyPrefabPath = Stage1PlaygroundBuilder.PrefabFolder + "/Enemies/Enemy_Patroller.prefab";
+        internal const string EnemyPrefabPath = Stage1PlaygroundBuilder.PrefabFolder + "/Enemies/Enemy_Patroller.prefab";
         private const string HidingSpotPrefabPath =
             Stage1PlaygroundBuilder.PrefabFolder + "/World/HidingSpot_Wardrobe.prefab";
 

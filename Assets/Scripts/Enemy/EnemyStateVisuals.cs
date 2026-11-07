@@ -21,6 +21,10 @@ namespace AshenWoods.Enemy
         [Tooltip("Renderer tinted by state. Falls back to the first Renderer below this object.")]
         [SerializeField] private Renderer body;
 
+        [Tooltip("Tint the body by state. Turn off for a real textured model - the setup menu " +
+                 "'Ashen Woods > Enemy > Set Up Enemy Animations' does this for you.")]
+        [SerializeField] private bool tintBody = true;
+
         [Header("Colors")]
         [SerializeField] private Color patrolColor = new Color(0.42f, 0.44f, 0.40f);
         [SerializeField] private Color searchColor = new Color(0.85f, 0.62f, 0.18f);
@@ -69,7 +73,7 @@ namespace AshenWoods.Enemy
 
         private void Apply(EnemyState state)
         {
-            if (body == null)
+            if (body == null || !tintBody)
             {
                 return;
             }

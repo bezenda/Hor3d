@@ -131,6 +131,26 @@ will be cut into a real level later.
 - **Quiet Console.** Gameplay trace logs go through `GameLog` and are off by default; turn
   them on with *Diagnostics > Verbose Gameplay Logs*. Warnings and errors always show.
 
+## Using your own enemy model
+
+1. Put the model (and its animation files, e.g. Mixamo `.fbx` clips) in one folder, for
+   example `Assets/Models/Enemy/`.
+2. Open `Assets/Prefabs/Enemies/Enemy_Patroller.prefab`, delete `Visuals/Body` and
+   `Visuals/Face`, and drag the model under `Visuals`. Feet at y = 0, about 1.8 m tall,
+   facing +Z (blue arrow). Move the `Eye` child to head height (~1.6 m).
+3. Run **Ashen Woods > Enemy > Set Up Enemy Animations**. It adds an Animator (with the
+   model's Avatar), removes colliders from the model, matches clips by name (*idle*,
+   *walk*, *run*, *attack/grab/catch/scream*), ticks Loop Time on the movement clips,
+   builds `Assets/Animations/Enemy/Enemy.controller` (Speed blend tree 0 / 1.5 / 3.3 plus a
+   Caught state), adds `EnemyAnimator` and turns off the placeholder colour tint. A dialog
+   lists what was matched and warns if the model's height or feet are off.
+4. Any clip it did not match: drag it into the controller's Locomotion blend tree or the
+   Caught state by hand. Running the menu again only fills empty slots.
+
+`EnemyAnimator` writes `Speed` (m/s), `State` (0 Patrol, 1 Investigate, 2 Chase, 3 Search,
+4 Caught), `Chasing` and the `Caught` trigger; parameters the controller lacks are skipped,
+so a hand-made controller works too. Root motion is always off - the AI moves the body.
+
 ## Controls
 
 | Key | Action |
