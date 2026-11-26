@@ -53,6 +53,9 @@ namespace AshenWoods.GameManagement
         /// <summary>True once the breaker has been fixed.</summary>
         public bool IsPowered { get; private set; }
 
+        /// <summary>The lamps it drives (the tension director swings and dims them).</summary>
+        public IReadOnlyList<Light> Lamps => lamps;
+
         private float[] authoredIntensity = new float[0];
         private float powerOnRemaining;
         private float flickerTimer;
@@ -132,9 +135,93 @@ namespace AshenWoods.GameManagement
             }
         }
 
+        // The tension director's zone (Disturb): lamps around a point stutter, or go dark one by one towards it.
+        private Vector3 zoneCentre;
+        private float zoneRadius;
+        private float zoneStart = -1f;
+        private float zoneEnd = -1f;
+        private bool zoneRolling;
+
+        /// <summary>
+        /// The tension director: lamps within <paramref name="radius"/> of <paramref name="centre"/> stutter for
+        /// <paramref name="seconds"/> - or, <paramref name="rolling"/>, go out one after another from the far side
+        /// towards the centre, stay dark, then stutter back. Gives the farthest lamp it touched (for a sound);
+        /// false when no lamp is in range.
+        /// </summary>
+        public bool Disturb(Vector3 centre, float radius, float seconds, bool rolling, out Vector3 farthestLamp)
+        {
+            farthestLamp = centre;
+            float best = -1f;
+            for (int i = 0; i < lamps.Count; i++)
+            {
+                Light lamp = lamps[i];
+                if (lamp == null || !lamp.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                float d = Vector3.Distance(lamp.transform.position, centre);
+                if (d <= radius && d > best)
+                {
+                    best = d;
+                    farthestLamp = lamp.transform.position;
+                }
+            }
+
+            if (best < 0f)
+            {
+                return false;
+            }
+
+            zoneCentre = centre;
+            zoneRadius = radius;
+            zoneStart = Time.time;
+            zoneEnd = Time.time + seconds;
+            zoneRolling = rolling;
+            disturbStep = 0f;
+            return true;
+        }
+
+        /// <summary>-1 = outside the director's zone, else the lamp's scale this tick (0 dark .. 1 normal).</summary>
+        private float ZoneScale(Light lamp)
+        {
+            if (Time.time >= zoneEnd)
+            {
+                return -1f;
+            }
+
+            float d = Vector3.Distance(lamp.transform.position, zoneCentre);
+            if (d > zoneRadius)
+            {
+                return -1f;
+            }
+
+            if (!zoneRolling)
+            {
+                return Random.value > 0.5f ? Random.Range(0.03f, 0.45f) : 1f;
+            }
+
+            // Far lamps first: the dark walks towards the player.
+            float since = Time.time - zoneStart;
+            float outAt = (1f - d / Mathf.Max(0.1f, zoneRadius)) * 1.4f;
+            float backAt = zoneEnd - zoneStart - 0.9f;
+            if (since < outAt)
+            {
+                return since > outAt - 0.25f && Random.value > 0.5f ? 0.2f : 1f; // a stutter just before it dies
+            }
+
+            if (since < backAt)
+            {
+                return 0f;
+            }
+
+            return Random.value > 0.45f ? Random.Range(0.05f, 0.6f) : 1f;
+        }
+
         private void TickDisturbance(float deltaTime)
         {
-            if (disturbRange <= 0f || lamps.Count == 0)
+            bool zone = Time.time < zoneEnd + 0.2f;
+            if ((disturbRange <= 0f && !zone) || lamps.Count == 0)
             {
                 return;
             }
@@ -158,6 +245,14 @@ namespace AshenWoods.GameManagement
                 Light lamp = lamps[i];
                 if (lamp == null || !lamp.isActiveAndEnabled)
                 {
+                    continue;
+                }
+
+                float zoneScale = zone ? ZoneScale(lamp) : -1f;
+                if (zoneScale >= 0f)
+                {
+                    lamp.intensity = authoredIntensity[i] * baseScale * zoneScale;
+                    disturbed[i] = true;
                     continue;
                 }
 

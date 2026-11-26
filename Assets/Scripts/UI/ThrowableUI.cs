@@ -56,8 +56,8 @@ namespace AshenWoods.UI
             if (label != null)
             {
                 label.text = thrower.IsCharging
-                    ? $"Отпусти, чтобы бросить — {Mathf.RoundToInt(thrower.Charge * 100f)}%"
-                    : $"{UiTheme.Capitalize(thrower.HeldItem.DisplayName)} — зажми <color=#{UiTheme.AccentHex}>ЛКМ</color>, чтобы бросить";
+                    ? World.Loc.Pick($"Отпусти, чтобы бросить — {Mathf.RoundToInt(thrower.Charge * 100f)}%", $"Release to throw — {Mathf.RoundToInt(thrower.Charge * 100f)}%")
+                    : World.Loc.Pick($"{UiTheme.Capitalize(World.Loc.T(thrower.HeldItem.DisplayName))} — зажми <color=#{UiTheme.AccentHex}>ЛКМ</color>, чтобы бросить", $"{UiTheme.Capitalize(World.Loc.T(thrower.HeldItem.DisplayName))} — hold <color=#{UiTheme.AccentHex}>LMB</color> to throw");
             }
 
             if (chargeFill != null)

@@ -136,7 +136,7 @@ namespace AshenWoods.GameManagement
 
                 if (IsComplete)
                 {
-                    return allCompleteDescription;
+                    return World.Loc.T(allCompleteDescription);
                 }
 
                 ObjectiveStep step = CurrentStep;
@@ -148,10 +148,10 @@ namespace AshenWoods.GameManagement
                 if (step.condition == ObjectiveCondition.CarryKeys)
                 {
                     string[] ids = KeyIds(step);
-                    return $"{step.description} ({CountHeld(ids)}/{ids.Length})";
+                    return $"{World.Loc.T(step.description)} ({CountHeld(ids)}/{ids.Length})";
                 }
 
-                return step.description ?? string.Empty;
+                return World.Loc.T(step.description) ?? string.Empty;
             }
         }
 

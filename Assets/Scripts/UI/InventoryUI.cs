@@ -41,14 +41,14 @@ namespace AshenWoods.UI
 
             if (keyHolder == null)
             {
-                listText.text = "У игрока нет места для ключей.";
+                listText.text = World.Loc.Pick("У игрока нет места для ключей.", "The player has nowhere to keep keys.");
                 return;
             }
 
             IReadOnlyList<string> keys = keyHolder.Keys;
             if (keys.Count == 0)
             {
-                listText.text = emptyMessage + SideLines(keys);
+                listText.text = World.Loc.T(emptyMessage) + SideLines(keys);
                 return;
             }
 
@@ -74,8 +74,8 @@ namespace AshenWoods.UI
                 return string.Empty;
             }
 
-            return "\n\nПрочитано журналов   " + AshenWoods.World.SideProgress.LogsRead + "/" + AshenWoods.World.SideProgress.LogsTotal +
-                   "\nОбразцы B-7   " + AshenWoods.World.SideProgress.CountSamples(keys) + "/" + AshenWoods.World.SideProgress.SamplesTotal;
+            return World.Loc.Pick("\n\nПрочитано журналов   ", "\n\nLogs read   ") + AshenWoods.World.SideProgress.LogsRead + "/" + AshenWoods.World.SideProgress.LogsTotal +
+                   World.Loc.Pick("\nОбразцы B-7   ", "\nB-7 samples   ") + AshenWoods.World.SideProgress.CountSamples(keys) + "/" + AshenWoods.World.SideProgress.SamplesTotal;
         }
 
         /// <summary>
@@ -86,13 +86,19 @@ namespace AshenWoods.UI
         {
             if (string.IsNullOrEmpty(keyId))
             {
-                return "Неизвестный ключ";
+                return World.Loc.Pick("Неизвестный ключ", "Unknown key");
+            }
+
+            // The pickup's own name ("ключ-карта охраны"), in the current language, when the level has it.
+            if (AshenWoods.Interaction.KeyPickup.TryDisplayName(keyId, out string named))
+            {
+                return AshenWoods.UI.UiTheme.Capitalize(World.Loc.T(named));
             }
 
             string spaced = keyId.Replace('_', ' ').Trim();
             if (spaced.Length == 0)
             {
-                return "Неизвестный ключ";
+                return World.Loc.Pick("Неизвестный ключ", "Unknown key");
             }
 
             StringBuilder builder = new StringBuilder(spaced.Length);

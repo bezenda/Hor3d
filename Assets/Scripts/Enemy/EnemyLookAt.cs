@@ -34,7 +34,7 @@ namespace AshenWoods.Enemy
 
         private void Update()
         {
-            bool want = brain != null && brain.HasLookPoint && (navigation == null || !navigation.IsClimbing);
+            bool want = brain != null && brain.HasLookPoint && brain.State != EnemyState.Caught && (navigation == null || !navigation.IsClimbing);
             weight = Mathf.MoveTowards(weight, want ? maxWeight : 0f, fadeSpeed * Time.deltaTime);
             if (want)
             {

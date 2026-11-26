@@ -20,7 +20,9 @@ namespace AshenWoods.GameManagement
     /// </summary>
     public static class GameSettings
     {
-        public static readonly string[] QualityNames = { "Низкое", "Среднее", "Высокое" };
+        public static string[] QualityNames => World.Loc.English ? QualityNamesEn : QualityNamesRu;
+        private static readonly string[] QualityNamesRu = { "Низкое", "Среднее", "Высокое" };
+        private static readonly string[] QualityNamesEn = { "Low", "Medium", "High" };
         public static readonly int[] FrameLimits = { 30, 60, 120, 144, -1 };
 
         private const string Prefix = "AshenWoods.Settings.";
@@ -92,7 +94,7 @@ namespace AshenWoods.GameManagement
         public static string FrameLimitName(int index)
         {
             int limit = FrameLimits[Mathf.Clamp(index, 0, FrameLimits.Length - 1)];
-            return limit < 0 ? "Без ограничения" : limit + " к/с";
+            return limit < 0 ? World.Loc.Pick("Без ограничения", "Unlimited") : limit + World.Loc.Pick(" к/с", " fps");
         }
 
         // ------------------------------------------------------------------ apply

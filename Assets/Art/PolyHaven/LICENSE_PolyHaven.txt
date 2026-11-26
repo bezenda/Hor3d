@@ -5,3 +5,9 @@ https://polyhaven.com/license
 Downloaded 2026-11-08 at 1K resolution for the Ashen Woods house dressing
 (HouseBuilder.Dressing.cs). Models: Models/<asset id>/<asset id>.fbx with their textures/;
 surface textures: Textures/<asset id>/ (diffuse + OpenGL normal map).
+
+Added 2026-11-26 (1K) for the title screen station (MenuSceneBuilder.Winter.cs), same licence (CC0):
+Models: covered_car, concrete_road_barrier, concrete_road_barrier_02, barrel_03, old_tyre, metal_jerrycan,
+metal_trash_can, trashbag, portable_generator, power_box_01, utility_box_02, propane_tank, cement_bag, hand_truck,
+wooden_crate_02, plastic_crate_01, industrial_pastic_container, dead_tree_trunk, tree_stump_01.
+Textures: snow_02, asphalt_snow, precast_concrete_wall.

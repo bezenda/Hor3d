@@ -1,0 +1,908 @@
+{
+ "pairs": [
+  {
+   "ru": "<color=#D9A657>↑ ↓</color>  выбрать        <color=#D9A657>← →</color>  изменить        <color=#D9A657>Esc</color>  назад",
+   "en": "<color=#D9A657>↑ ↓</color>  select        <color=#D9A657>← →</color>  change        <color=#D9A657>Esc</color>  back"
+  },
+  {
+   "ru": "<color=#D9A657>Esc</color>  вернуться в игру        <color=#D9A657>Tab</color>  сумка        <color=#D9A657>J</color>  дневник",
+   "en": "<color=#D9A657>Esc</color>  back to the game        <color=#D9A657>Tab</color>  satchel        <color=#D9A657>J</color>  journal"
+  },
+  {
+   "ru": "<color=#D9A657>R</color>  играть снова",
+   "en": "<color=#D9A657>R</color>  play again"
+  },
+  {
+   "ru": "<color=#D9A657>R</color>  попробовать снова",
+   "en": "<color=#D9A657>R</color>  try again"
+  },
+  {
+   "ru": "<color=#D9A657>Tab</color>  закрыть        <color=#D9A657>Esc</color>  пауза",
+   "en": "<color=#D9A657>Tab</color>  close        <color=#D9A657>Esc</color>  pause"
+  },
+  {
+   "ru": "<color=#D9A657>WASD</color>  идти     <color=#D9A657>Shift</color>  бежать / не дышать     <color=#D9A657>Ctrl</color>  пригнуться     <color=#D9A657>E</color>  использовать     <color=#D9A657>F</color>  фонарь     <color=#D9A657>ПКМ</color>  вспышка     <color=#D9A657>ЛКМ</color>  бросить",
+   "en": "<color=#D9A657>WASD</color>  walk     <color=#D9A657>Shift</color>  run / hold breath     <color=#D9A657>Ctrl</color>  crouch     <color=#D9A657>E</color>  use     <color=#D9A657>F</color>  torch     <color=#D9A657>RMB</color>  flash     <color=#D9A657>LMB</color>  throw"
+  },
+  {
+   "ru": "B-7, НЕДЕЛЯ 31: объект больше не реагирует на седативные препараты. Агрессивно реагирует на шум. Сильная вспышка оглушает его на несколько секунд — единственный надёжный способ пройти мимо. Двери лаборатории держать закрытыми.",
+   "en": "B-7, WEEK 31: the subject no longer responds to sedatives. Reacts aggressively to noise. A strong flash stuns it for a few seconds — the only reliable way to get past it. Keep the lab doors shut."
+  },
+  {
+   "ru": "F  ФОНАРЬ",
+   "en": "F  TORCH"
+  },
+  {
+   "ru": "АВАРИЙНЫЙ РЕЖИМ. ПИТАНИЕ ОТ АККУМУЛЯТОРА.\n\nВСЕМУ ПЕРСОНАЛУ, ОСТАВШЕМУСЯ НА СТАНЦИИ\nОбъект B-7 покинул камеру. Он охотится на звук и плохо видит в темноте, но заметит любой свет.\n\n— Двигайтесь медленно. Бег слышен через весь цех.\n— Если объект вас заметил, уйдите из поля зрения и укройтесь в шкафчике или под столом.\n— В укрытии не дышите, пока он рядом: дыхание за дверцей он слышит.\n— Вспышка фонаря сбивает его с ног на несколько секунд.\n— Брошенная бутылка или банка уведёт его на шум.\n\nЭВАКУАЦИЯ — через ворота погрузочной зоны в сборочном цехе. Чтобы их поднять, нужно:\n1. Включить рубильники в электрощитовой. Её дверь открывает ключ-карта охраны из кабинета лаборатории, а код от кабинета знала ночная смена.\n2. Заправить генератор — канистры на складе.\n3. Открыть вентили гидравлики в комнате под электрощитовой.\n\nНе шумите. Не ждите помощи.",
+   "en": "EMERGENCY MODE. RUNNING ON BATTERY.\n\nTO ALL STAFF STILL ON THE STATION\nSubject B-7 has left its cell. It hunts by sound and sees poorly in the dark, but it will notice any light.\n\n— Move slowly. Running can be heard across the whole hall.\n— If the subject has seen you, get out of its sight and hide in a locker or under a desk.\n— While hiding, hold your breath when it is near: it can hear breathing behind a door.\n— A torch flash knocks it down for a few seconds.\n— A thrown bottle or can will lead it towards the noise.\n\nEVACUATION — through the loading bay gate in the assembly hall. To raise it you need to:\n1. Throw the breakers in the breaker room. Its door opens with the security keycard from the lab office; the night shift knew the office code.\n2. Refuel the generator — the fuel cans are in the warehouse.\n3. Open the hydraulic valves in the room below the breaker room.\n\nStay quiet. Don't wait for help."
+  },
+  {
+   "ru": "Бак сухой. Двух канистр должно хватить.",
+   "en": "The tank is dry. Two cans should be enough."
+  },
+  {
+   "ru": "Бежать наружу",
+   "en": "Run outside"
+  },
+  {
+   "ru": "БРИГАДИР — НОЧНАЯ СМЕНА",
+   "en": "FOREMAN — NIGHT SHIFT"
+  },
+  {
+   "ru": "бутылка",
+   "en": "bottle"
+  },
+  {
+   "ru": "Ввести код",
+   "en": "Enter the code"
+  },
+  {
+   "ru": "Вентиль (у насосов нет питания)",
+   "en": "Valve (the pumps have no power)"
+  },
+  {
+   "ru": "Вентиль A",
+   "en": "Valve A"
+  },
+  {
+   "ru": "Вентиль A поворачивается с долгим шипением.",
+   "en": "Valve A turns with a long hiss."
+  },
+  {
+   "ru": "Вентиль B",
+   "en": "Valve B"
+  },
+  {
+   "ru": "Вентиль B поворачивается с долгим шипением.",
+   "en": "Valve B turns with a long hiss."
+  },
+  {
+   "ru": "Вентиль C",
+   "en": "Valve C"
+  },
+  {
+   "ru": "Вентиль C поворачивается с долгим шипением.",
+   "en": "Valve C turns with a long hiss."
+  },
+  {
+   "ru": "Вентиль D",
+   "en": "Valve D"
+  },
+  {
+   "ru": "Вентиль D поворачивается с долгим шипением.",
+   "en": "Valve D turns with a long hiss."
+  },
+  {
+   "ru": "Вернуться в игру",
+   "en": "Back to the game"
+  },
+  {
+   "ru": "Взять батарейку",
+   "en": "Take the battery"
+  },
+  {
+   "ru": "Включи рубильники на главном щите.",
+   "en": "Throw the breakers on the main panel."
+  },
+  {
+   "ru": "Включить",
+   "en": "Switch on"
+  },
+  {
+   "ru": "Возьми ключ-карту охраны в кабинете лаборатории.",
+   "en": "Get the security keycard from the lab office."
+  },
+  {
+   "ru": "Ворота — на восточной стене сборочного цеха. Пока они ползут вверх, прячься, слепи его вспышкой, отвлекай бросками — главное, выживи.",
+   "en": "The gate is on the east wall of the assembly hall. While it crawls up — hide, blind it with the flash, distract it with throws. Above all, survive."
+  },
+  {
+   "ru": "Ворота (нет давления в гидравлике)",
+   "en": "Gate (no hydraulic pressure)"
+  },
+  {
+   "ru": "Ворота вздрагивают и со скрежетом ползут вверх. Это громко. Продержись.",
+   "en": "The gate shudders and starts grinding upwards. It's loud. Hold on."
+  },
+  {
+   "ru": "Ворота погрузочной зоны",
+   "en": "Loading bay gate"
+  },
+  {
+   "ru": "Ворота поднимаются…",
+   "en": "The gate is rising…"
+  },
+  {
+   "ru": "Ворота со скрежетом уходят вверх, в темноту. Холодный воздух. Ты бежишь.",
+   "en": "The gate grinds up into the dark. Cold air. You run."
+  },
+  {
+   "ru": "Все рубильники на щите должны стоять вверху.",
+   "en": "Every breaker on the panel has to be up."
+  },
+  {
+   "ru": "Вспышка ещё заряжается.",
+   "en": "The flash is still charging."
+  },
+  {
+   "ru": "Выйти",
+   "en": "Quit"
+  },
+  {
+   "ru": "Выйти из игры",
+   "en": "Quit the game"
+  },
+  {
+   "ru": "Выключить",
+   "en": "Switch off"
+  },
+  {
+   "ru": "Вылезти",
+   "en": "Climb out"
+  },
+  {
+   "ru": "Выход — ворота погрузочной зоны. Нужны: ключ-карта (кабинет лаборатории), рубильники, топливо, гидравлика.",
+   "en": "Way out — the loading bay gate. Needs: keycard (lab office), breakers, fuel, hydraulics."
+  },
+  {
+   "ru": "Генератор — на нижнем этаже электроцеха, пусковой пульт у его восточного края.",
+   "en": "The generator is on the lower floor of the power hall, the starter console at its east end."
+  },
+  {
+   "ru": "Генератор (нет питания управления)",
+   "en": "Generator (no control power)"
+  },
+  {
+   "ru": "Генератор (нет топлива)",
+   "en": "Generator (no fuel)"
+  },
+  {
+   "ru": "Генератор кашляет и ревёт.",
+   "en": "The generator coughs and roars."
+  },
+  {
+   "ru": "ГИДРАВЛИКА ВОРОТ",
+   "en": "GATE HYDRAULICS"
+  },
+  {
+   "ru": "ГИДРАВЛИКА ВОРОТ — ПЕРЕЗАПУСК",
+   "en": "GATE HYDRAULICS — RESTART"
+  },
+  {
+   "ru": "Главное меню",
+   "en": "Main menu"
+  },
+  {
+   "ru": "Громкость",
+   "en": "Volume"
+  },
+  {
+   "ru": "Давление растёт. Отойди подальше — оно это услышит. Это лишь отвлечение, к выходу не ведёт.",
+   "en": "Pressure is building. Get well away — it will hear this. It's only a distraction; it won't get you out."
+  },
+  {
+   "ru": "ДЛЯ СМЕНЩИКА",
+   "en": "FOR WHOEVER'S NEXT ON SHIFT"
+  },
+  {
+   "ru": "Если ты это читаешь, значит, я так и не вернулся. Пошёл искать Росса.\n\nФонарь оставил на столе. Батарейки валяются по всей станции — подбирай все.\n\nНоутбук работает от аккумулятора. Охрана разослала по нему памятку — прочти, там всё.\n\nИ не беги. Оно слышит.\n\n— Г.",
+   "en": "If you're reading this, I never came back. Went looking for Ross.\n\nI left the torch on the desk. There are batteries all over the station — grab every one.\n\nThe laptop runs on its battery. Security sent a memo round on it — read it, it's all there.\n\nAnd don't run. It hears.\n\n— G."
+  },
+  {
+   "ru": "ЖАЛОБА",
+   "en": "COMPLAINT"
+  },
+  {
+   "ru": "жестяная банка",
+   "en": "tin can"
+  },
+  {
+   "ru": "ЖУРНАЛ ИССЛЕДОВАНИЙ — B-7, ДЕНЬ 31",
+   "en": "RESEARCH LOG — B-7, DAY 31"
+  },
+  {
+   "ru": "ЖУРНАЛ ИССЛЕДОВАНИЙ — B-7, ДЕНЬ 40",
+   "en": "RESEARCH LOG — B-7, DAY 40"
+  },
+  {
+   "ru": "ЖУРНАЛ ЭЛЕКТРИКА",
+   "en": "ELECTRICIAN'S LOG"
+  },
+  {
+   "ru": "Задания не настроены.",
+   "en": "No objectives set up."
+  },
+  {
+   "ru": "Закрыть",
+   "en": "Close"
+  },
+  {
+   "ru": "Закрыть дверь",
+   "en": "Close the door"
+  },
+  {
+   "ru": "Залезть под стол",
+   "en": "Crawl under the desk"
+  },
+  {
+   "ru": "Залить топливо и дёрнуть стартер",
+   "en": "Pour in the fuel and pull the starter"
+  },
+  {
+   "ru": "Замок щёлкает и открывается.",
+   "en": "The lock clicks open."
+  },
+  {
+   "ru": "Запаянная пробирка. Что-то внутри бьётся о стекло.",
+   "en": "A sealed test tube. Something inside is beating against the glass."
+  },
+  {
+   "ru": "Заперто. Кодовая панель у двери мигает красным.",
+   "en": "Locked. The keypad by the door is blinking red."
+  },
+  {
+   "ru": "Записки висят на стенах склада, сборочного цеха и лаборатории и слегка светятся. Найденные цифры — в дневнике (J).",
+   "en": "The notes hang on the walls of the warehouse, the assembly hall and the lab, with a faint glow. Every digit you find goes into the journal (J)."
+  },
+  {
+   "ru": "Запусти генератор на нижнем этаже электроцеха.",
+   "en": "Start the generator on the lower floor of the power hall."
+  },
+  {
+   "ru": "Здесь ничего не написано.",
+   "en": "Nothing is written here."
+  },
+  {
+   "ru": "Играть снова",
+   "en": "Play again"
+  },
+  {
+   "ru": "Изолирующий гель — 40 бочек. Седативное (ветеринарное) — 12 ящиков. Сырое мясо — 200 кг еженедельно.\n\nПолучатель: д-р Э. Хейл. Назначение: B-7.\n\nЧто съедает 200 кг в неделю?",
+   "en": "Isolation gel — 40 drums. Sedative (veterinary) — 12 crates. Raw meat — 200 kg weekly.\n\nConsignee: Dr E. Hale. Purpose: B-7.\n\nWhat eats 200 kg a week?"
+  },
+  {
+   "ru": "Исследовательская станция «Ashen Woods»",
+   "en": "Ashen Woods Research Station"
+  },
+  {
+   "ru": "Кабинет лаборатории",
+   "en": "Lab office"
+  },
+  {
+   "ru": "Кабинет лаборатории (кодовый замок)",
+   "en": "Lab office (keypad lock)"
+  },
+  {
+   "ru": "Кабинет, кодовый замок, ПОСЛЕДНЯЯ цифра: <b>{code3}</b>\n(первые две — спроси на складе и в сборочном)\n\nB-7 сегодня опять скрёбся в стекло. Третий раз за неделю.\nКогда горит свет, он затихает.",
+   "en": "Office keypad, LAST digit: <b>{code3}</b>\n(ask the warehouse and assembly for the first two)\n\nB-7 was scratching at the glass again today. Third time this week.\nWhen the lights are on, it goes quiet."
+  },
+  {
+   "ru": "Каморка уборщика",
+   "en": "Janitor's closet"
+  },
+  {
+   "ru": "канистра с топливом",
+   "en": "fuel can"
+  },
+  {
+   "ru": "Канистры стоят на складе, на полу у стен.",
+   "en": "The fuel cans are in the warehouse, on the floor along the walls."
+  },
+  {
+   "ru": "Карманы пусты. Всё, что подберёшь, — ключи, карты, топливо — окажется здесь.",
+   "en": "Your pockets are empty. Everything you pick up — keys, cards, fuel — ends up here."
+  },
+  {
+   "ru": "Качество графики",
+   "en": "Graphics quality"
+  },
+  {
+   "ru": "КЛЮЧИ",
+   "en": "KEYS"
+  },
+  {
+   "ru": "Ключ-карта лежит на столе в кабинете лаборатории, у северной стены.",
+   "en": "The keycard is on the desk in the lab office, by the north wall."
+  },
+  {
+   "ru": "ключ-карта охраны",
+   "en": "security keycard"
+  },
+  {
+   "ru": "Код кабинета, первая цифра: <b>{code1}</b> (склад)",
+   "en": "Office code, first digit: <b>{code1}</b> (warehouse)"
+  },
+  {
+   "ru": "Код кабинета, последняя цифра: <b>{code3}</b> (лаборатория)",
+   "en": "Office code, last digit: <b>{code3}</b> (lab)"
+  },
+  {
+   "ru": "Код кабинета, средняя цифра: <b>{code2}</b> (сборочный цех)",
+   "en": "Office code, middle digit: <b>{code2}</b> (assembly hall)"
+  },
+  {
+   "ru": "Кодовый замок (открыт)",
+   "en": "Keypad lock (open)"
+  },
+  {
+   "ru": "Комната вентилей",
+   "en": "Valve room"
+  },
+  {
+   "ru": "Комната вентилей — под электрощитовой, двери с западной и южной стороны. Порядок написан на жёлтой доске внутри и записан в дневнике (J).",
+   "en": "The valve room is below the breaker room, with doors on its west and south sides. The order is on the yellow board inside and in your journal (J)."
+  },
+  {
+   "ru": "Крутится вхолостую. У насосов ещё нет питания.",
+   "en": "It spins freely. The pumps still have no power."
+  },
+  {
+   "ru": "Лаборатория",
+   "en": "Laboratory"
+  },
+  {
+   "ru": "ЛАБОРАТОРИЯ — КРЫЛО B",
+   "en": "LABORATORY — WING B"
+  },
+  {
+   "ru": "Лес затаил дыхание.",
+   "en": "The woods are holding their breath."
+  },
+  {
+   "ru": "Лес смыкается за спиной. Погони нет. Пока что.",
+   "en": "The woods close in behind you. No one is chasing you. Not yet."
+  },
+  {
+   "ru": "ЛКМ  БРОСОК",
+   "en": "LMB  THROW"
+  },
+  {
+   "ru": "Мостки в электроцехе ведут к двери электрощитовой — она высоко у восточной стены.",
+   "en": "The catwalks in the power hall lead to the breaker room door — high up on the east wall."
+  },
+  {
+   "ru": "Мотор воет, но ворота не поднимаются. В гидравлике нет давления.",
+   "en": "The motor howls, but the gate won't rise. There's no pressure in the hydraulics."
+  },
+  {
+   "ru": "Н А   С В О Б О Д Е",
+   "en": "E S C A P E D"
+  },
+  {
+   "ru": "Н А С Т Р О Й К И",
+   "en": "S E T T I N G S"
+  },
+  {
+   "ru": "Назад",
+   "en": "Back"
+  },
+  {
+   "ru": "Найден в Ashen Woods, к югу от старого карьера.\n\nЯркий свет переносит крайне плохо — фотовспышка валит его с ног на несколько секунд. Слух намного острее всего, что мы когда-либо измеряли.\n\nОн начал подражать голосам ночной смены.",
+   "en": "Recovered from Ashen Woods, south of the old quarry.\n\nIt cannot stand bright light — a photoflash knocks it off its feet for a few seconds. Its hearing is far sharper than anything we have ever measured.\n\nIt has started imitating the voices of the night shift."
+  },
+  {
+   "ru": "Найди фонарь. Он должен быть на столе уборщика.",
+   "en": "Find a torch. It should be on the janitor's desk."
+  },
+  {
+   "ru": "Насосы работают только от ОСНОВНОГО питания (генератора).\n\nОткрывать вентили строго в ЭТОМ порядке:\n\n              <b>{valves}</b>\n\nПерепутаешь порядок — будет гидроудар. Всё закроется, придётся начинать заново, а грохот разнесётся по всей станции.\n\nКогда давление поднимется, можно будет открыть ворота в сборочном цехе. Это долго. И громко.",
+   "en": "The pumps only run on MAIN power (the generator).\n\nOpen the valves strictly in THIS order:\n\n              <b>{valves}</b>\n\nGet the order wrong and you'll get a water hammer. Everything shuts, you'll have to start over, and the bang will carry through the whole station.\n\nOnce the pressure is up, the gate in the assembly hall can be opened. It takes a while. And it's loud."
+  },
+  {
+   "ru": "Настройки",
+   "en": "Settings"
+  },
+  {
+   "ru": "Не включается. Во всём здании нет электричества.",
+   "en": "It won't turn on. There's no power anywhere in the building."
+  },
+  {
+   "ru": "Не работает. Нужно основное питание — от генератора.",
+   "en": "Not working. It needs main power — from the generator."
+  },
+  {
+   "ru": "Не работает: цепь управления обесточена.",
+   "en": "Not working: the control circuit is dead."
+  },
+  {
+   "ru": "Не тот вентиль. Давление падает с грохотом — начинай заново.",
+   "en": "Wrong valve. The pressure drops with a bang — start over."
+  },
+  {
+   "ru": "Не хватает заряда для вспышки.",
+   "en": "Not enough charge for the flash."
+  },
+  {
+   "ru": "Неверный код — завыла тревога! Оно услышит.",
+   "en": "Wrong code — the alarm is wailing! It will hear."
+  },
+  {
+   "ru": "Некуда вставить батарейку.",
+   "en": "Nowhere to put the battery."
+  },
+  {
+   "ru": "Нет питания",
+   "en": "No power"
+  },
+  {
+   "ru": "Новая игра",
+   "en": "New game"
+  },
+  {
+   "ru": "Ноутбук (нет питания)",
+   "en": "Laptop (no power)"
+  },
+  {
+   "ru": "образец ткани B-7",
+   "en": "B-7 tissue sample"
+  },
+  {
+   "ru": "Ограничение кадров",
+   "en": "Frame limit"
+  },
+  {
+   "ru": "Он повторил то, что Росс сказал в свою последнюю ночь. Его голосом, слово в слово:\n\n«А, ещё одна жертва».\n\nРосса мы так и не нашли. Стекло камеры B-7 треснуло изнутри.",
+   "en": "It repeated what Ross said on his last night. In his voice, word for word:\n\n\"Ah, another victim.\"\n\nWe never found Ross. The glass of B-7's cell cracked from the inside."
+  },
+  {
+   "ru": "Оно оглушено — беги!",
+   "en": "It's stunned — run!"
+  },
+  {
+   "ru": "Оно охотится на звук. Иди шагом, пригибайся и бросай предметы, чтобы увести его.",
+   "en": "It hunts by sound. Walk, crouch and throw things to lead it away."
+  },
+  {
+   "ru": "Оно тебя схватило!",
+   "en": "It's got you!"
+  },
+  {
+   "ru": "Открой вентили гидравлики в комнате под электрощитовой. Порядок — на жёлтой доске.",
+   "en": "Open the hydraulic valves in the room below the breaker room. The order is on the yellow board."
+  },
+  {
+   "ru": "Открыть вентиль A",
+   "en": "Open valve A"
+  },
+  {
+   "ru": "Открыть вентиль B",
+   "en": "Open valve B"
+  },
+  {
+   "ru": "Открыть вентиль C",
+   "en": "Open valve C"
+  },
+  {
+   "ru": "Открыть вентиль D",
+   "en": "Open valve D"
+  },
+  {
+   "ru": "Открыть ворота погрузочной зоны",
+   "en": "Open the loading bay gate"
+  },
+  {
+   "ru": "Открыть кабинет",
+   "en": "Open the office"
+  },
+  {
+   "ru": "Открыть комнату вентилей",
+   "en": "Open the valve room"
+  },
+  {
+   "ru": "Открыть терминал охраны",
+   "en": "Open the security terminal"
+  },
+  {
+   "ru": "Открыть электрощитовую",
+   "en": "Open the breaker room"
+  },
+  {
+   "ru": "ОХРАНА — ДАТЧИКИ ДВИЖЕНИЯ",
+   "en": "SECURITY — MOTION SENSORS"
+  },
+  {
+   "ru": "П А У З А",
+   "en": "P A U S E D"
+  },
+  {
+   "ru": "ПАМЯТКА ДЛЯ ВСЕГО ПЕРСОНАЛА",
+   "en": "MEMO TO ALL STAFF"
+  },
+  {
+   "ru": "Панель привинчена намертво. Нужен лом.",
+   "en": "The panel is screwed down tight. You need a crowbar."
+  },
+  {
+   "ru": "Пит,\n\nСРЕДНЯЯ цифра нового кода от кабинета:\n\n        <b>{code2}</b>\n\nЦеликом нигде не записывай — она нам головы оторвёт.\n\n— Р.",
+   "en": "Pete,\n\nthe MIDDLE digit of the new office code:\n\n        <b>{code2}</b>\n\nDon't write the whole thing down anywhere — she'll have our heads.\n\n— R."
+  },
+  {
+   "ru": "Питание восстановлено.\n\nНарушена изоляция B-7. Объект на свободе.\nОхотится на звук, избегает яркого света.\n\nЭвакуируйтесь через погрузочную зону.\nНас не ждите.\n\n— — —",
+   "en": "Power restored.\n\nB-7 containment breached. The subject is loose.\nIt hunts by sound and avoids bright light.\n\nEvacuate through the loading bay.\nDon't wait for us.\n\n— — —"
+  },
+  {
+   "ru": "Питание я отключила сама. Я спрятала код, слила топливо, заперла ворота.\n\nЕсли оно доберётся до леса, оно доберётся и до города.\n\nКто бы ты ни был: если откроешь ворота, убедись, что наружу выйдешь только ты.",
+   "en": "I cut the power myself. I hid the code, drained the fuel, locked the gate.\n\nIf it reaches the woods, it will reach the town.\n\nWhoever you are: if you open that gate, make sure you're the only one who walks out."
+  },
+  {
+   "ru": "Подними ворота погрузочной зоны в сборочном цехе и продержись, пока они открываются.",
+   "en": "Raise the loading bay gate in the assembly hall and hold on while it opens."
+  },
+  {
+   "ru": "Поднимись по мосткам электроцеха к электрощитовой.",
+   "en": "Climb the power hall catwalks to the breaker room."
+  },
+  {
+   "ru": "Полная канистра. Тяжёлая — с ней не побегаешь.",
+   "en": "A full fuel can. Heavy — you won't be running with it."
+  },
+  {
+   "ru": "Попади в кабинет лаборатории. Код от двери — на трёх записках: на складе, в сборочном цехе и в лаборатории.",
+   "en": "Get into the lab office. The door code is split across three notes: in the warehouse, the assembly hall and the lab."
+  },
+  {
+   "ru": "Попробовать снова",
+   "en": "Try again"
+  },
+  {
+   "ru": "ПОРЯДОК ВЕНТИЛЕЙ",
+   "en": "VALVE ORDER"
+  },
+  {
+   "ru": "Порядок вентилей (комната под электрощитовой): <b>{valves}</b>",
+   "en": "Valve order (room below the breaker room): <b>{valves}</b>"
+  },
+  {
+   "ru": "Последний вентиль открыт. Трубы грохочут до самой погрузочной зоны — в гидравлике появилось давление.",
+   "en": "The last valve is open. The pipes rumble all the way to the loading bay — there's pressure in the hydraulics."
+  },
+  {
+   "ru": "Посмотреть ноутбук",
+   "en": "Look at the laptop"
+  },
+  {
+   "ru": "Посмотреть терминал",
+   "en": "Look at the terminal"
+  },
+  {
+   "ru": "Привинчено намертво (нужен лом)",
+   "en": "Screwed down tight (needs a crowbar)"
+  },
+  {
+   "ru": "Принеси две канистры топлива для генератора. Они на складе.",
+   "en": "Bring two cans of fuel for the generator. They're in the warehouse."
+  },
+  {
+   "ru": "Продолжить",
+   "en": "Continue"
+  },
+  {
+   "ru": "Прочитать журнал",
+   "en": "Read the log"
+  },
+  {
+   "ru": "Прочитать записку",
+   "en": "Read the note"
+  },
+  {
+   "ru": "Прочитать инструкцию",
+   "en": "Read the instructions"
+  },
+  {
+   "ru": "Прочитать порядок вентилей",
+   "en": "Read the valve order"
+  },
+  {
+   "ru": "Пульт мёртв — воротам нужно питание.",
+   "en": "The console is dead — the gate needs power."
+  },
+  {
+   "ru": "Рубильник с лязгом встаёт на место. Где-то загудело.",
+   "en": "The breaker clanks into place. Something starts humming."
+  },
+  {
+   "ru": "Рубильник с лязгом падает вниз.",
+   "en": "The breaker clanks down."
+  },
+  {
+   "ru": "С У М К А",
+   "en": "S A T C H E L"
+  },
+  {
+   "ru": "С этой минуты во всех цехах — РЕЖИМ ТИШИНЫ.\n\nНе бегать. Не ронять инструмент. Никаких раций.\nЕсли погас свет — оставайтесь на месте и не двигайтесь.\n\nВ темноте оно видит плохо. Ему это и не нужно.\n\n— Э. Хейл",
+   "en": "From now on, every hall is under SILENT RUNNING.\n\nNo running. No dropped tools. No radios.\nIf the lights go out — stay where you are and don't move.\n\nIt sees poorly in the dark. It doesn't need to.\n\n— E. Hale"
+  },
+  {
+   "ru": "Сборочный цех",
+   "en": "Assembly hall"
+  },
+  {
+   "ru": "СБОРОЧНЫЙ ЦЕХ",
+   "en": "ASSEMBLY HALL"
+  },
+  {
+   "ru": "СБРОС ГЛАВНОГО ЩИТА: все три рубильника — ВВЕРХ. Если свет в цехе не загорелся, переключите их ещё раз.",
+   "en": "MAIN PANEL RESET: all three breakers — UP. If the lights in the hall don't come on, flip them again."
+  },
+  {
+   "ru": "СБРОС ПАРА",
+   "en": "STEAM RELEASE"
+  },
+  {
+   "ru": "Сброс пара (давление ещё не набралось)",
+   "en": "Steam release (pressure still building)"
+  },
+  {
+   "ru": "Сброс пара (пусто)",
+   "en": "Steam release (empty)"
+  },
+  {
+   "ru": "Сброс пара (стравливается)",
+   "en": "Steam release (venting)"
+  },
+  {
+   "ru": "Свежая батарейка — фонарь продержится дольше.",
+   "en": "A fresh battery — the torch will last longer."
+  },
+  {
+   "ru": "Света нет. Что-то в темноте прислушивается.",
+   "en": "No power. Something in the dark is listening."
+  },
+  {
+   "ru": "Синхронизация кадров",
+   "en": "VSync"
+  },
+  {
+   "ru": "Склад",
+   "en": "Warehouse"
+  },
+  {
+   "ru": "СКЛАД — НАКЛАДНАЯ № 14",
+   "en": "WAREHOUSE — MANIFEST No. 14"
+  },
+  {
+   "ru": "СКЛАД — НОЧНАЯ СМЕНА",
+   "en": "WAREHOUSE — NIGHT SHIFT"
+  },
+  {
+   "ru": "Сложность",
+   "en": "Difficulty"
+  },
+  {
+   "ru": "Спрятаться в шкафчик",
+   "en": "Hide in the locker"
+  },
+  {
+   "ru": "Стартер",
+   "en": "Starter"
+  },
+  {
+   "ru": "Стартер не отвечает — нет питания управления. Видимо, рубильники на щите опущены.",
+   "en": "The starter won't respond — no control power. The breakers on the panel must be down."
+  },
+  {
+   "ru": "Стол уборщика — прямо здесь, в каморке, где всё началось.",
+   "en": "The janitor's desk is right here, in the closet where it all began."
+  },
+  {
+   "ru": "Стравить пар (громко — приманит его сюда)",
+   "en": "Vent the steam (loud — it will draw it here)"
+  },
+  {
+   "ru": "СХЕМА СТАНЦИИ",
+   "en": "STATION MAP"
+  },
+  {
+   "ru": "Считыватель мигает красным. Нужна ключ-карта охраны.",
+   "en": "The reader blinks red. You need the security keycard."
+  },
+  {
+   "ru": "Т Е Б Я   П О Й М А Л И",
+   "en": "Y O U   W E R E   C A U G H T"
+  },
+  {
+   "ru": "ТЕРМИНАЛ ДЕЖУРНОГО",
+   "en": "DUTY TERMINAL"
+  },
+  {
+   "ru": "Терминал охраны (нет питания)",
+   "en": "Security terminal (no power)"
+  },
+  {
+   "ru": "Тому, кто это читает:\n\nв вентиляции над складом что-то есть. Оно скребётся всю ночь и ползёт на звук моей тележки. Мне не мерещится.\n\nЯ просил заварить вентиляцию. Никто не отвечает.",
+   "en": "To whoever reads this:\n\nthere's something in the vents above the warehouse. It scratches all night and creeps towards the sound of my cart. I'm not imagining it.\n\nI asked for the vents to be welded shut. Nobody answers."
+  },
+  {
+   "ru": "Топливо залито, стартер дёрнут. Генератор кашляет и ревёт — по всей станции, мигая, загорается свет. Это слышали все.",
+   "en": "Fuel in, starter pulled. The generator coughs and roars — lights flicker on across the whole station. Everyone heard that."
+  },
+  {
+   "ru": "Ты на свободе.",
+   "en": "You're free."
+  },
+  {
+   "ru": "Ты приходишь в себя на полу каморки уборщика. Света нет. Где-то в здании что-то движется.",
+   "en": "You come to on the floor of the janitor's closet. No light. Somewhere in the building, something is moving."
+  },
+  {
+   "ru": "Ты трясёшь фонарь — он снова загорается. Ненадолго.",
+   "en": "You shake the torch — it flickers back on. Not for long."
+  },
+  {
+   "ru": "Тяжёлый стальной фонарь. Работает — включается клавишей F.",
+   "en": "A heavy steel torch. It works — press F to switch it on."
+  },
+  {
+   "ru": "У тебя нет фонаря.",
+   "en": "You don't have a torch."
+  },
+  {
+   "ru": "Уборщик: в ноутбуке на столе памятка охраны. Не бегать.",
+   "en": "Janitor: there's a security memo on the laptop on the desk. Don't run."
+  },
+  {
+   "ru": "Угол обзора",
+   "en": "Field of view"
+  },
+  {
+   "ru": "фонарь",
+   "en": "torch"
+  },
+  {
+   "ru": "Фонарь и так полностью заряжен.",
+   "en": "The torch is already fully charged."
+  },
+  {
+   "ru": "Фонарь сел. Найди батарейку.",
+   "en": "The torch is dead. Find a battery."
+  },
+  {
+   "ru": "Хейл велела слить топливо из генератора и оставить канистры на складе. «Пока нет питания, ворота не поднимутся».\n\nОна не воров боится. Она хочет что-то удержать ВНУТРИ.",
+   "en": "Hale told me to drain the generator and leave the cans in the warehouse. \"No power, no gate.\"\n\nShe isn't afraid of thieves. She wants to keep something IN."
+  },
+  {
+   "ru": "Хейл ОПЯТЬ сменила код на кабинете.\n\nЯ успел разглядеть только ПЕРВУЮ цифру, пока она не захлопнула дверь:\n\n        <b>{code1}</b>\n\nОстальное спроси у Пита из сборочного.\n\n— М.",
+   "en": "Hale changed the office code AGAIN.\n\nI only caught the FIRST digit before she slammed the door:\n\n        <b>{code1}</b>\n\nAsk Pete in assembly for the rest.\n\n— M."
+  },
+  {
+   "ru": "Хейл спустилась сама. Северную вентиляцию заварить сегодня же ночью, без вопросов, оплата двойная.\n\nРосс спросил, что держат в лаборатории. Она велела ему идти домой. Домой он не пошёл.",
+   "en": "Hale came down herself. Weld the north vents shut tonight, no questions, double pay.\n\nRoss asked what they keep in the lab. She told him to go home. He didn't go home."
+  },
+  {
+   "ru": "Чувствительность мыши",
+   "en": "Mouse sensitivity"
+  },
+  {
+   "ru": "Щит ожил, но основной свет так и не загорелся. Похоже, генератор без топлива.",
+   "en": "The panel is alive, but the main lights still haven't come on. Looks like the generator is out of fuel."
+  },
+  {
+   "ru": "Э. ХЕЙЛ — ЛИЧНОЕ",
+   "en": "E. HALE — PRIVATE"
+  },
+  {
+   "ru": "Электроцех",
+   "en": "Power hall"
+  },
+  {
+   "ru": "Электрощитовая",
+   "en": "Breaker room"
+  },
+  {
+   "ru": "Электрощитовая (нужна ключ-карта)",
+   "en": "Breaker room (needs a keycard)"
+  },
+  {
+   "ru": "Яркость",
+   "en": "Brightness"
+  },
+  {
+   "ru": "Открыть дверь",
+   "en": "Open the door"
+  },
+  {
+   "ru": "Заперто (нужен железный ключ)",
+   "en": "Locked (needs an iron key)"
+  },
+  {
+   "ru": "Заперто. Нужен железный ключ.",
+   "en": "Locked. It needs an iron key."
+  },
+  {
+   "ru": "лом",
+   "en": "crowbar"
+  },
+  {
+   "ru": "железный ключ",
+   "en": "iron key"
+  },
+  {
+   "ru": "Спрятаться под кроватью",
+   "en": "Hide under the bed"
+  },
+  {
+   "ru": "Спрятаться",
+   "en": "Hide"
+  },
+  {
+   "ru": "Прочитать",
+   "en": "Read"
+  },
+  {
+   "ru": "Осмотрись.",
+   "en": "Look around."
+  },
+  {
+   "ru": "Задание",
+   "en": "Objective"
+  },
+  {
+   "ru": "ЗАДАНИЕ",
+   "en": "OBJECTIVE"
+  },
+  {
+   "ru": "Пока пусто. Ключи открывают запертые двери.",
+   "en": "Nothing yet. Keys open locked doors."
+  },
+  {
+   "ru": "Открыть сброс пара",
+   "en": "Open the steam release"
+  },
+  {
+   "ru": "Вентиль дрожит. Давление растёт — отойди подальше.",
+   "en": "The valve shudders. Pressure is building — get well away."
+  },
+  {
+   "ru": "Попробовать входную дверь",
+   "en": "Try the front door"
+  },
+  {
+   "ru": "Замок мёртв. В доме нет электричества.",
+   "en": "The lock is dead. There's no power in the house."
+  },
+  {
+   "ru": "Выломать входную дверь",
+   "en": "Break down the front door"
+  },
+  {
+   "ru": "Ты выламываешь дверь и вываливаешься в темноту.",
+   "en": "You break the door down and stumble out into the dark."
+  },
+  {
+   "ru": "Язык",
+   "en": "Language"
+  },
+  {
+   "ru": "КОРПУС 2",
+   "en": "BUILDING 2"
+  },
+  {
+   "ru": "ВХОД ЗАПРЕЩЁН\nТЕРРИТОРИЯ СТАНЦИИ",
+   "en": "NO ENTRY\nSTATION GROUNDS"
+  },
+  {
+   "ru": "ОПАСНО\nВЫСОКОЕ НАПРЯЖЕНИЕ",
+   "en": "DANGER\nHIGH VOLTAGE"
+  }
+ ]
+}

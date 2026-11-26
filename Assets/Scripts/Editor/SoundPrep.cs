@@ -47,6 +47,21 @@ namespace AshenWoods.EditorTools
             Slice("StepConcrete/footsteps_concrete_seq.ogg", "StepConcrete/concrete_step", 0.9f, report);
             Single("StepConcrete/concrete_single.ogg", "StepConcrete/concrete_step_single.wav", 0.9f, 0.6f, report);
 
+            // Catch v2: the crunch at the cut (Freesound CC0, 2026-11-26).
+            Single("Crunch/bone_crunch.mp3", "Crunch/crunch_1.wav", 0.95f, 1.6f, report);
+            Single("Crunch/bone_crunch_fast.mp3", "Crunch/crunch_2.wav", 0.95f, 1.2f, report);
+            Single("Crunch/breaking_neck.mp3", "Crunch/crunch_3.wav", 0.95f, 1.2f, report);
+
+            // Drips for the tension director: single drops cut out of longer takes.
+            Single("Drip/water_drop.mp3", "Drip/drip_single.wav", 0.8f, 0.6f, report);
+            Slice("Drip/water_droplets.mp3", "Drip/drip_droplets", 0.8f, report);
+            Slice("Drip/cave_dripping.mp3", "Drip/drip_cave", 0.8f, report);
+
+            // Enemy voice (owner's takes, 2026-11-26): pitched down, ring-modulated and driven so no human voice is
+            // left in them. Raw takes in Staging/EnemyVoice; drop another one there and add a line to add a variant.
+            Monster("EnemyVoice/caught_stalker.mp3", "EnemyCaught/caught_stalker.wav", 0.8f, 3.2f, 48f, 8f, report);
+            Monster("EnemyVoice/found_you.mp3", "EnemyFound/found_you.wav", 0.84f, 2.6f, 62f, 6f, report);
+
             AssetDatabase.Refresh();
             return "[Sound prep] " + string.Join("; ", report.ToArray());
         }
@@ -69,6 +84,62 @@ namespace AshenWoods.EditorTools
             Finish(cut, rate, peak, fadeOutSeconds);
             Write(target, cut, rate);
             report.Add(target + $" ({cut.Length / (float)rate:0.00} s)");
+        }
+
+        /// <summary>
+        /// A recorded voice made inhuman: pitched down (slower, deeper), ring-modulated at <paramref name="ringHz"/>
+        /// (half wet: a metallic, throaty growl), soft-clipped with <paramref name="drive"/> (tanh), low-passed to take
+        /// the fizz off the distortion, then normalised and faded like every other clip.
+        /// </summary>
+        private static void Monster(string source, string target, float pitch, float drive, float ringHz,
+            float maxSeconds, List<string> report)
+        {
+            float[] data; int rate;
+            if (!Load(source, out data, out rate, report))
+            {
+                return;
+            }
+
+            int start, end;
+            TrimSilence(data, rate, out start, out end);
+            end = Math.Min(end, start + (int)(maxSeconds * pitch * rate));
+            data = Sub(data, start, end);
+
+            // Deeper and slower: stretch the samples, play them at the same rate.
+            data = Resample(data, rate, Mathf.RoundToInt(rate / Mathf.Clamp(pitch, 0.5f, 1f)));
+
+            // Ring modulation, half wet.
+            double step = 2.0 * Math.PI * ringHz / rate;
+            for (int i = 0; i < data.Length; i++)
+            {
+                data[i] = data[i] * (0.55f + 0.45f * (float)Math.Sin(i * step));
+            }
+
+            // Drive into a soft clip.
+            Normalise(data, 0.9f);
+            float norm = (float)Math.Tanh(drive);
+            for (int i = 0; i < data.Length; i++)
+            {
+                data[i] = (float)Math.Tanh(drive * data[i]) / norm;
+            }
+
+            // Tone: high-pass ~70 Hz (rumble), low-pass ~5.5 kHz (fizz), one pole each.
+            float hpA = Mathf.Exp(-2f * Mathf.PI * 70f / rate);
+            float lpA = Mathf.Exp(-2f * Mathf.PI * 5500f / rate);
+            float hpPrevIn = 0f, hpPrevOut = 0f, lp = 0f;
+            for (int i = 0; i < data.Length; i++)
+            {
+                float x = data[i];
+                float hp = hpA * (hpPrevOut + x - hpPrevIn);
+                hpPrevIn = x;
+                hpPrevOut = hp;
+                lp = lpA * lp + (1f - lpA) * hp;
+                data[i] = lp;
+            }
+
+            Finish(data, rate, 0.95f, 0.25f);
+            Write(target, data, rate);
+            report.Add($"{target}: {data.Length / (float)rate:0.00} s (pitch {pitch}, drive {drive}, ring {ringHz} Hz)");
         }
 
         private static void Mix(string first, string second, float secondAt, string target, List<string> report)

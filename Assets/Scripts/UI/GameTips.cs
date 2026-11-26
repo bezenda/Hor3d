@@ -100,38 +100,32 @@ namespace AshenWoods.UI
         {
             if (interactor != null && interactor.Current is HidingSpot)
             {
-                Offer("hide", "Укрытие",
-                    $"Шкаф прячет от глаз, но не от ушей. Не залезай, пока оно смотрит, — иначе вытащит.\n" +
-                    $"Когда оно рядом, держи {UiTheme.Key("Shift")}, чтобы не дышать. Воздуха хватит ненадолго. " +
-                    $"А если оно уже у дверцы — выбей её ({UiTheme.Key("E")}) и беги.");
+                Offer("hide", World.Loc.Pick("Укрытие", "Hiding"),
+                    World.Loc.Pick($"Шкаф прячет от глаз, но не от ушей. Не залезай, пока оно смотрит, — иначе вытащит.\nКогда оно рядом, держи {UiTheme.Key("Shift")}, чтобы не дышать. Воздуха хватит ненадолго. А если оно уже у дверцы — выбей её ({UiTheme.Key("E")}) и беги.", $"A locker hides you from its eyes, not its ears. Don't climb in while it's watching — it will drag you out.\nWhen it's close, hold {UiTheme.Key("Shift")} to stop breathing. The air won't last long. And if it's already at the door, kick it open ({UiTheme.Key("E")}) and run."));
             }
 
             if (DetectionMeter.Alerted)
             {
-                Offer("eye", "Глаз под прицелом",
-                    "Показывает, что оно о тебе знает. Жёлтый «?» — что-то заметило или услышало, оранжевый — ищет, " +
-                    "красный «!» — видит тебя. Пока глаз закрыт, ты в безопасности.");
+                Offer("eye", World.Loc.Pick("Глаз под прицелом", "The eye"),
+                    World.Loc.Pick("Показывает, что оно о тебе знает. Жёлтый «?» — что-то заметило или услышало, оранжевый — ищет, красный «!» — видит тебя. Пока глаз закрыт, ты в безопасности.", "Shows what it knows about you. Yellow \"?\" — it noticed or heard something, orange — it's searching, red \"!\" — it sees you. While the eye is shut, you're safe."));
             }
 
             if (DetectionMeter.PlayerNoise > 0.7f)
             {
-                Offer("noise", "Шум",
-                    $"Бег слышно издалека — следи за шкалой шума под глазом. Иди шагом или пригнись ({UiTheme.Key("Ctrl")}). " +
-                    $"Брошенная бутылка ({UiTheme.Key("ЛКМ")}) уведёт его в сторону.");
+                Offer("noise", World.Loc.Pick("Шум", "Noise"),
+                    World.Loc.Pick($"Бег слышно издалека — следи за шкалой шума под глазом. Иди шагом или пригнись ({UiTheme.Key("Ctrl")}). Брошенная бутылка ({UiTheme.Key("ЛКМ")}) уведёт его в сторону.", $"Running carries a long way — watch the noise bar under the eye. Walk or crouch ({UiTheme.Key("Ctrl")}). A thrown bottle ({UiTheme.Key("LMB")}) will lead it away."));
             }
 
             if (torch != null && torch.IsOwned)
             {
-                Offer("torch", "Фонарь",
-                    $"{UiTheme.Key("F")} — включить. Свет видно издалека, а в темноте тебя заметить труднее.\n" +
-                    $"{UiTheme.Key("ПКМ")} — вспышка: оглушает его на несколько секунд, но тратит заряд.");
+                Offer("torch", World.Loc.Pick("Фонарь", "Torch"),
+                    World.Loc.Pick($"{UiTheme.Key("F")} — включить. Свет видно издалека, а в темноте тебя заметить труднее.\n{UiTheme.Key("ПКМ")} — вспышка: оглушает его на несколько секунд, но тратит заряд.", $"{UiTheme.Key("F")} — switch on. Light can be seen from far away; in the dark you're harder to spot.\n{UiTheme.Key("RMB")} — flash: stuns it for a few seconds but drains the charge."));
             }
 
             if (carry != null && carry.Count > 0)
             {
-                Offer("heavy", "Тяжёлый груз",
-                    $"С канистрой не побегаешь, и шаги медленнее. Если придётся убегать, брось её на пол ({UiTheme.Key("ЛКМ")}) — " +
-                    "потом её можно подобрать снова.");
+                Offer("heavy", World.Loc.Pick("Тяжёлый груз", "Heavy load"),
+                    World.Loc.Pick($"С канистрой не побегаешь, и шаги медленнее. Если придётся убегать, брось её на пол ({UiTheme.Key("ЛКМ")}) — потом её можно подобрать снова.", $"You can't run with a fuel can, and you walk slower. If you have to flee, drop it ({UiTheme.Key("LMB")}) — you can pick it up again later."));
             }
         }
 
@@ -185,7 +179,7 @@ namespace AshenWoods.UI
             carryGroup.alpha = Mathf.MoveTowards(carryGroup.alpha, show ? 1f : 0f, dt * 4f);
             if (show)
             {
-                carryLine.text = $"Тяжело: бежать нельзя      {UiTheme.Key("ЛКМ")} — бросить на пол";
+                carryLine.text = World.Loc.Pick($"Тяжело: бежать нельзя      {UiTheme.Key("ЛКМ")} — бросить на пол", $"Heavy: no running      {UiTheme.Key("LMB")} — drop it");
             }
         }
 

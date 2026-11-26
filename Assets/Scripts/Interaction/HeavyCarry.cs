@@ -128,7 +128,7 @@ namespace AshenWoods.Interaction
 
             if (interactor != null)
             {
-                interactor.ShowFeedback(AshenWoods.UI.UiTheme.Capitalize(item.DisplayName) + " — на полу.");
+                interactor.ShowFeedback(AshenWoods.UI.UiTheme.Capitalize(World.Loc.T(item.DisplayName)) + World.Loc.Pick(" — на полу.", " — on the floor."));
             }
         }
     }

@@ -27,6 +27,16 @@ namespace AshenWoods.Interaction
 
         public string KeyId => keyId;
         public string DisplayName => displayName;
+
+        // Display names by key id, filled as pickups wake (the satchel shows "Security keycard", not the id "keycard").
+        private static readonly System.Collections.Generic.Dictionary<string, string> Names =
+            new System.Collections.Generic.Dictionary<string, string>();
+
+        /// <summary>The Russian display name the level gave this key id (translate with Loc.T).</summary>
+        public static bool TryDisplayName(string id, out string name) => Names.TryGetValue(id ?? string.Empty, out name);
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetNames() => Names.Clear();
         public bool IsHeavy => heavy;
 
         [Header("Visual (optional)")]
@@ -45,6 +55,11 @@ namespace AshenWoods.Interaction
 
         private void Awake()
         {
+            if (!string.IsNullOrEmpty(keyId) && !string.IsNullOrEmpty(displayName))
+            {
+                Names[keyId] = displayName;
+            }
+
             if (visual != null)
             {
                 visualStartPosition = visual.localPosition;
@@ -68,7 +83,7 @@ namespace AshenWoods.Interaction
 
         public string GetPrompt(IInteractionActor actor)
         {
-            return AshenWoods.UI.UiTheme.Capitalize(displayName) + " — взять";
+            return AshenWoods.UI.UiTheme.Capitalize(World.Loc.T(displayName)) + World.Loc.Pick(" — взять", " — take");
         }
 
         public string Interact(IInteractionActor actor)
@@ -90,13 +105,13 @@ namespace AshenWoods.Interaction
             GameLog.Info($"[KeyPickup] Took '{keyId}' ({displayName}) at {transform.position}.", this);
             AshenWoods.World.PickupLedger.Take(gameObject, keyId, heavy);
 
-            string message = string.IsNullOrEmpty(takenMessage) ? "Подобрано: " + displayName + "." : takenMessage;
+            string message = string.IsNullOrEmpty(takenMessage) ? World.Loc.Pick("Подобрано: ", "Picked up: ") + World.Loc.T(displayName) + "." : World.Loc.T(takenMessage);
             if (heavy && holder != null)
             {
                 // A heavy item is carried, not destroyed: X puts it down again where the player stands.
                 HeavyCarry.On(holder.gameObject).Carry(this);
                 gameObject.SetActive(false);
-                return message + "\nЛКМ — бросить на пол.";
+                return message + World.Loc.Pick("\nЛКМ — бросить на пол.", "\nLMB — drop it on the floor.");
             }
 
             Destroy(gameObject);

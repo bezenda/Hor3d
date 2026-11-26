@@ -64,7 +64,7 @@ namespace AshenWoods.World
             }
 
             int index = letters.IndexOf(rows[row][column]);
-            return index >= 0 && index < names.Length ? names[index] : string.Empty;
+            return index >= 0 && index < names.Length ? Loc.T(names[index]) : string.Empty;
         }
 
         /// <summary>Every named room, in atlas order.</summary>
@@ -119,7 +119,7 @@ namespace AshenWoods.World
             }
 
             int index = letters.IndexOf(rows[cz][cx]);
-            return index >= 0 && index < names.Length ? names[index] : string.Empty;
+            return index >= 0 && index < names.Length ? Loc.T(names[index]) : string.Empty;
         }
     }
 }

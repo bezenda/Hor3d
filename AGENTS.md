@@ -79,7 +79,8 @@ Always-on rules from those files:
   Tab satchel, Esc pause. Older notes naming Q/G/X/C describe the previous layout.
 - UI screenshots in Play mode: `HudShot.Take(name)` -> `Temp/Shots/<name>.png`.
 - Not in git (public repo): `Assets/Models`, `Assets/Animations` (owner art), `Assets/SciFi Warehouse Kit` (Asset Store EULA,
-  re-import from Package Manager > My Assets), `Builds/`. `Enemy_Patroller.prefab` and `AshWoods_House.unity` stay uncommitted.
+  re-import from Package Manager > My Assets), `Builds/`, owner-supplied audio of unknown licence (title music `Sounds/MenuMusic`,
+  enemy voice takes `Staging/EnemyVoice` + their processed `caught_stalker`/`found_you` wavs, `Audio_Unused/`). `Enemy_Patroller.prefab` and `AshWoods_House.unity` stay uncommitted.
 
 Each builder exposes `EnsureStageNPieces()` and a `MenuItem` that validates the open scene
 first. `Stage1PlaygroundBuilder` also holds the shared helpers: `SetObjectReference`,
@@ -89,7 +90,8 @@ The menu tree is grouped, and the group is part of the interface - keep it:
 
 ```
 Ashen Woods / Level              Create Two-Storey House Scene, Build Or Update The House,
-                                 Create Main Menu Scene
+                                 Create Main Menu Scene, Bright Editing Light (toggle, Ctrl+Alt+L: unlit
+                                 Scene view + hidden never-saved lights, removed for Play)
 Ashen Woods / Stages             Stage 2..12 + Rewrite Objective Chain, Interface Redesign (Open Scene)
 Ashen Woods / Legacy Playground  Create Playground Scene, Add Missing Pieces, Build The East Wing
 Ashen Woods / Enemy              Set Up Enemy Animations (after dropping a model under Visuals), Fix Foot Bones In Avatar
@@ -221,10 +223,12 @@ With the editor closed, `Stage7FlowBuilder.BuildHouseInBatchMode` compiles and r
 Build only through `Ashen Woods > Build > Windows Build - Next Patch / Next Minor` (`VersionedBuild.Build(minor)`;
 from automation call it directly in `execute_code`, ~80 s; `delayCall` never fires while the editor is unfocused). Every build gets a new
 Semantic Versioning 2.0.0 number (0.y.z while in development: patch per build, minor when a feature lands),
-written to `PlayerSettings.bundleVersion`, and its own folder + zip: `Builds/AshenWoods_<version>/Ashen Woods.exe`,
-`Builds/AshenWoods_<version>.zip` (without `*_DoNotShip`). Every build ships `CHANGELOG.txt` (project root, Russian,
-short player-facing bullets): write the changes under `== Не выпущено ==` before building - the build refuses an
-empty section, then renames it to `== <version> - <date> ==` and copies the file into the folder and zip.
+written to `PlayerSettings.bundleVersion` (the title screen's corner shows it as Application.version), and its own
+folder + zip: `Builds/AshenWoods_<version>/Ashen Woods.exe`, `Builds/AshenWoods_<version>.zip` (without `*_DoNotShip`).
+Every build ships the change list in Russian AND English (owner, 2026-11-26): `CHANGELOG.txt` (`== Не выпущено ==`)
+and `CHANGELOG_EN.txt` (`== Unreleased ==`) in the project root, shipped as `CHANGELOG_RU.txt` / `CHANGELOG_EN.txt`.
+They are for players only: short, plain bullets, no technical words. The build refuses if either section is empty,
+then renames both to `== <version> - <date> ==` and copies them into the folder and zip.
 Windows graphics APIs are **Direct3D11 first, Direct3D12 second** (2026-11-13): a friend's GTX 1650 (driver 516.56)
 crashed every run in Unity 6.4's DX12 backend (`D3D12ScratchAllocator::DestroyScratch` <- `GfxDeviceD3D12::QueueExecute`,
 null read), in the menu or right after the level loaded. Do not put DX12 back first. To read a player crash: the
@@ -237,5 +241,6 @@ removed on 2026-11-12; `Builds` holds only versioned folders and their zips.
 
 ## Git
 
-Work is pushed by the assistant to `main` (the owner pulls). Commit messages state why the
+Work is pushed by the assistant to `main` (the owner pulls) - but only when the next MINOR or MAJOR version is
+ready (owner, 2026-11-26): no commits or pushes for patch builds or work in progress. Commit messages state why the
 change was made. Keep the stage numbering in the README table accurate when a stage lands.

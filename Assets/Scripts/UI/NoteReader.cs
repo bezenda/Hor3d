@@ -81,14 +81,20 @@ namespace AshenWoods.UI
 
         /// <summary>The controls as a game hint (not part of any in-world text): shown under the laptop briefing.</summary>
         public static string ControlsLegend =>
-            $"{UiTheme.Key("WASD")} идти     {UiTheme.Key("Shift")} бежать / не дышать в укрытии     {UiTheme.Key("Ctrl")} пригнуться     " +
-            $"{UiTheme.Key("E")} действие\n{UiTheme.Key("F")} фонарь     {UiTheme.Key("ЛКМ")} бросить     {UiTheme.Key("ПКМ")} вспышка     " +
-            $"{UiTheme.Key("J")} дневник     {UiTheme.Key("Esc")} пауза";
+            World.Loc.English
+                ? $"{UiTheme.Key("WASD")} walk     {UiTheme.Key("Shift")} run / hold breath when hiding     {UiTheme.Key("Ctrl")} crouch     " +
+                  $"{UiTheme.Key("E")} use\n{UiTheme.Key("F")} torch     {UiTheme.Key("LMB")} throw     {UiTheme.Key("RMB")} flash     " +
+                  $"{UiTheme.Key("J")} journal     {UiTheme.Key("Esc")} pause"
+                : $"{UiTheme.Key("WASD")} идти     {UiTheme.Key("Shift")} бежать / не дышать в укрытии     {UiTheme.Key("Ctrl")} пригнуться     " +
+                  $"{UiTheme.Key("E")} действие\n{UiTheme.Key("F")} фонарь     {UiTheme.Key("ЛКМ")} бросить     {UiTheme.Key("ПКМ")} вспышка     " +
+                  $"{UiTheme.Key("J")} дневник     {UiTheme.Key("Esc")} пауза";
 
         public static void Show(string title, string body, NoteStyle style) => Show(title, body, style, null);
 
         public static void Show(string title, string body, NoteStyle style, string footer)
         {
+            title = World.Loc.T(title);
+            body = World.Loc.T(body);
             if (instance == null)
             {
                 var go = new GameObject("NoteReader");
@@ -179,7 +185,7 @@ namespace AshenWoods.UI
             var atlas = AshenWoods.World.RoomAtlas.Instance;
             if (atlas == null || atlas.Rows == 0)
             {
-                bodyText.text = "НЕТ СИГНАЛА";
+                bodyText.text = World.Loc.Pick("НЕТ СИГНАЛА", "NO SIGNAL");
                 return;
             }
 
@@ -300,7 +306,7 @@ namespace AshenWoods.UI
                     mark.GetComponent<Image>().raycastTarget = false;
 
                     Text it = MakeText("ItLabel", mapRoot, font, 15, FontStyle.Normal, dark, TextAnchor.LowerCenter);
-                    it.text = "ДВИЖЕНИЕ";
+                    it.text = World.Loc.Pick("ДВИЖЕНИЕ", "MOTION");
                     var itRect = (RectTransform)it.transform;
                     itRect.anchorMin = itRect.anchorMax = where;
                     itRect.pivot = new Vector2(0.5f, 0f);
@@ -328,7 +334,7 @@ namespace AshenWoods.UI
                     dot.GetComponent<Image>().raycastTarget = false;
 
                     Text here = MakeText("Here", mapRoot, font, 15, FontStyle.Normal, red, TextAnchor.UpperCenter);
-                    here.text = "Ты здесь";
+                    here.text = World.Loc.Pick("Ты здесь", "You are here");
                     var hereRect = (RectTransform)here.transform;
                     hereRect.anchorMin = hereRect.anchorMax = at;
                     hereRect.pivot = new Vector2(0.5f, 1f);
@@ -525,7 +531,7 @@ namespace AshenWoods.UI
 
             // The hint sits under the sheet, on the dimmed screen, so the paper is all text.
             hint = MakeText("Hint", sheetRect, UiTheme.Regular, 17, FontStyle.Normal, new Color(0.8f, 0.78f, 0.74f, 0.85f), TextAnchor.UpperCenter);
-            hint.text = "E или Esc — отложить";
+            hint.text = World.Loc.Pick("E или Esc — отложить", "E or Esc — put it down");
             var hintRect = (RectTransform)hint.transform;
             hintRect.anchorMin = hintRect.anchorMax = new Vector2(0.5f, 0f);
             hintRect.pivot = new Vector2(0.5f, 1f);
@@ -581,7 +587,7 @@ namespace AshenWoods.UI
                         Width = 820f, PadX = 56f, PadTop = 48f, PadBottom = 52f, TitleGap = 18f, Tilt = 0f, LineSpacing = 1.15f,
                         TitleFont = UiTheme.Mono, BodyFont = UiTheme.Mono, TitleSize = 22, BodySize = 20, MinBodySize = 15,
                         Ink = new Color(0.55f, 0.92f, 0.62f, 1f), TitleInk = new Color(0.75f, 1f, 0.78f, 1f),
-                        Header = "СЕТЬ СТАНЦИИ «ПЕПЕЛЬНЫЙ ЛЕС»  ·  ТЕРМИНАЛ 04"
+                        Header = World.Loc.Pick("СЕТЬ СТАНЦИИ «ASHEN WOODS»  ·  ТЕРМИНАЛ 04", "ASHEN WOODS STATION NETWORK  ·  TERMINAL 04")
                     };
                 case NoteStyle.Memo:
                     return new Look
@@ -589,7 +595,7 @@ namespace AshenWoods.UI
                         Width = 700f, PadX = 64f, PadTop = 50f, PadBottom = 60f, TitleGap = 20f, Tilt = -0.6f, LineSpacing = 1.18f,
                         TitleFont = UiTheme.SerifBold, BodyFont = UiTheme.Serif, TitleSize = 24, BodySize = 21, MinBodySize = 15,
                         Ink = new Color(0.08f, 0.075f, 0.07f, 1f), TitleInk = new Color(0.05f, 0.045f, 0.04f, 1f),
-                        Header = "СТАНЦИЯ «ПЕПЕЛЬНЫЙ ЛЕС»  ·  СЛУЖЕБНЫЙ ДОКУМЕНТ"
+                        Header = World.Loc.Pick("СТАНЦИЯ «ASHEN WOODS»  ·  СЛУЖЕБНЫЙ ДОКУМЕНТ", "ASHEN WOODS STATION  ·  INTERNAL DOCUMENT")
                     };
                 case NoteStyle.Typed:
                     return new Look
@@ -597,7 +603,7 @@ namespace AshenWoods.UI
                         Width = 700f, PadX = 62f, PadTop = 50f, PadBottom = 60f, TitleGap = 20f, Tilt = 0.5f, LineSpacing = 1.2f,
                         TitleFont = UiTheme.Typewriter, BodyFont = UiTheme.Typewriter, TitleSize = 23, BodySize = 21, MinBodySize = 15,
                         Ink = new Color(0.09f, 0.08f, 0.08f, 1f), TitleInk = new Color(0.12f, 0.1f, 0.09f, 1f),
-                        Header = "ОТДЕЛ ИССЛЕДОВАНИЙ  ·  ДЛЯ СЛУЖЕБНОГО ПОЛЬЗОВАНИЯ"
+                        Header = World.Loc.Pick("ОТДЕЛ ИССЛЕДОВАНИЙ  ·  ДЛЯ СЛУЖЕБНОГО ПОЛЬЗОВАНИЯ", "RESEARCH DIVISION  ·  INTERNAL USE ONLY")
                     };
                 default:
                     return new Look

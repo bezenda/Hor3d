@@ -43,15 +43,23 @@ namespace AshenWoods.UI
             group.blocksRaycasts = false;
             group.interactable = false;
 
-            Text title = UiTheme.MakeText("Place", transform, UiTheme.Display, 54, UiTheme.Ink, TextAnchor.MiddleCenter);
+            // The title sits above the centre line and the situation below it, with a clear gap: the two boxes used to
+            // overlap, so the second line ran over the title. Best fit keeps the tracked title on one line on any width.
+            Text title = UiTheme.MakeText("Place", transform, UiTheme.Display, 50, UiTheme.Ink, TextAnchor.LowerCenter);
             title.text = UiTheme.Tracked(place);
-            title.horizontalOverflow = HorizontalWrapMode.Overflow;
-            Place(title.rectTransform, new Vector2(0f, 60f), new Vector2(1600f, 90f));
+            title.horizontalOverflow = HorizontalWrapMode.Wrap;
+            title.verticalOverflow = VerticalWrapMode.Truncate;
+            title.resizeTextForBestFit = true;
+            title.resizeTextMinSize = 24;
+            title.resizeTextMaxSize = 50;
+            Place(title.rectTransform, new Vector2(0f, 24f), new Vector2(1700f, 70f), 0f);
 
             Text line = UiTheme.MakeText("Situation", transform, UiTheme.Regular, 22, UiTheme.Muted, TextAnchor.UpperCenter);
             line.text = situation;
             line.lineSpacing = 1.2f;
-            Place(line.rectTransform, new Vector2(0f, -10f), new Vector2(760f, 120f));
+            line.horizontalOverflow = HorizontalWrapMode.Wrap;
+            line.verticalOverflow = VerticalWrapMode.Overflow;
+            Place(line.rectTransform, new Vector2(0f, -14f), new Vector2(760f, 120f), 1f);
             foreach (Text text in new[] { title, line })
             {
                 Shadow shadow = text.gameObject.AddComponent<Shadow>();
@@ -60,10 +68,11 @@ namespace AshenWoods.UI
             }
         }
 
-        private static void Place(RectTransform rect, Vector2 position, Vector2 size)
+        /// <summary>pivotY 0: the box grows up from the position; 1: it hangs down from it.</summary>
+        private static void Place(RectTransform rect, Vector2 position, Vector2 size, float pivotY)
         {
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, pivotY);
             rect.anchoredPosition = position;
             rect.sizeDelta = size;
         }

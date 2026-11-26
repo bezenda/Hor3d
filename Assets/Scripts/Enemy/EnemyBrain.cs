@@ -900,13 +900,19 @@ namespace AshenWoods.Enemy
             }
 
             int next = NextPatrolIndex();
-            if (prowlBias <= 0f || patrolPoints.Length < 4 || target == null || target.IsOutOfPlay
-                || UnityEngine.Random.value > prowlBias)
+            bool sent = Time.time < sentUntil;
+            if (!sent && (prowlBias <= 0f || patrolPoints.Length < 4 || target == null || target.IsOutOfPlay
+                || UnityEngine.Random.value > prowlBias))
             {
                 return next;
             }
 
-            Vector3 quarry = target.TargetRoot.position;
+            if (patrolPoints.Length < 4)
+            {
+                return next;
+            }
+
+            Vector3 quarry = sent ? sentArea : target.TargetRoot.position;
             int wanted = Mathf.Min(prowlCandidates, patrolPoints.Length - 2);
             var nearest = new int[wanted];
             var nearestDistance = new float[wanted];
@@ -1279,6 +1285,49 @@ namespace AshenWoods.Enemy
             }
         }
 
+        private Vector3 sentArea;
+        private float sentUntil = -1f;
+
+        /// <summary>
+        /// The tension director's peak: walk the waypoints around <paramref name="area"/> for a while, still on patrol
+        /// (no alert, nothing on the eye) - it simply happens to come this way. Ignored unless patrolling calmly.
+        /// </summary>
+        public bool ProwlTowards(Vector3 area, float seconds)
+        {
+            if (State != EnemyState.Patrol || retreatRemaining > 0f || IsStunned || !sensesActive || patrolPoints.Length < 4)
+            {
+                return false;
+            }
+
+            sentArea = area;
+            sentUntil = Time.time + seconds;
+            pauseRemaining = 0f;
+            patrolIndex = ChooseNextPatrolIndex();
+            if (navigation != null)
+            {
+                navigation.Stop(); // UpdatePatrol asks for the new route next frame
+            }
+
+            if (logStateChanges)
+            {
+                GameLog.Info($"[Enemy] Director: prowling towards {area} for {seconds:0} s.", this);
+            }
+
+            return true;
+        }
+
+        /// <summary>The director's relief after a hard stretch: back off to the far waypoints unless busy with the player.</summary>
+        public void RequestRetreat(float seconds)
+        {
+            if (State == EnemyState.Chase || State == EnemyState.Caught || huntingHiddenTarget || CanSeeTarget)
+            {
+                return;
+            }
+
+            sentUntil = -1f;
+            BeginRetreat(seconds);
+        }
+
         private void BeginRetreat(float seconds)
         {
             if (AshenWoods.GameManagement.FinalChase.FinaleSeconds >= 0f)
@@ -1554,6 +1603,13 @@ namespace AshenWoods.Enemy
                 navigation.TurnTowards(catchPoint, deltaTime);
             }
 
+            // A run-ending catch: it keeps hold until the scene reloads (the catch scene films its face). Only the old
+            // respawn placeholder, where the player is back in play at once, lets it walk off.
+            if (target != null && target.IsOutOfPlay)
+            {
+                return;
+            }
+
             caughtRemaining -= deltaTime;
 
             if (caughtRemaining <= 0f)
@@ -1715,6 +1771,17 @@ namespace AshenWoods.Enemy
             }
         }
 
+        /// <summary>
+        /// Where its face is, for the catch scene: between the eyes of a Humanoid model's head, else the sight point.
+        /// Read once at the catch; the model is optional (the capsule placeholder uses the sight point).
+        /// </summary>
+        private Vector3 FacePoint()
+        {
+            Animator body = GetComponentInChildren<Animator>();
+            Transform head = body != null && body.isHuman ? body.GetBoneTransform(HumanBodyBones.Head) : null;
+            return head != null ? head.position + Vector3.up * 0.07f + transform.forward * 0.08f : FlashPoint;
+        }
+
         private void EnterCaught()
         {
             LastCatchCause = huntingHiddenTarget && target.IsHiddenFromEnemy ? huntCause : CatchCause.Open;
@@ -1733,7 +1800,7 @@ namespace AshenWoods.Enemy
                 GameLog.Info($"[Enemy] Caught the target at {target.TargetRoot.position}.", this);
             }
 
-            target.NotifyCaught(transform.position);
+            target.NotifyCaught(transform.position, transform, FacePoint());
         }
 
         private void SetState(EnemyState state)

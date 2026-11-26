@@ -64,7 +64,7 @@ namespace AshenWoods.Interaction
         {
             if (!string.IsNullOrEmpty(message))
             {
-                FeedbackRaised?.Invoke(message);
+                FeedbackRaised?.Invoke(World.Loc.T(message));
             }
         }
 
@@ -111,7 +111,7 @@ namespace AshenWoods.Interaction
 
             IInteractable target = forcedTarget != null ? forcedTarget : FindTarget();
 
-            string prompt = target != null && target.IsAvailable ? target.GetPrompt(this) : null;
+            string prompt = target != null && target.IsAvailable ? World.Loc.T(target.GetPrompt(this)) : null;
             SetTarget(target, prompt);
 
             if (input.InteractPressed && target != null && target.IsAvailable)
@@ -119,7 +119,7 @@ namespace AshenWoods.Interaction
                 string message = target.Interact(this);
                 if (!string.IsNullOrEmpty(message))
                 {
-                    FeedbackRaised?.Invoke(message);
+                    FeedbackRaised?.Invoke(World.Loc.T(message));
                 }
             }
         }

@@ -41,7 +41,7 @@ namespace AshenWoods.UI
             bool canAct = input != null && input.InputEnabled && Time.timeScale > 0f;
             if (canAct && keyboard != null && keyboard.jKey.wasPressedThisFrame)
             {
-                NoteReader.Show("Дневник", Compose(), NoteStyle.Handwritten);
+                NoteReader.Show(World.Loc.Pick("Дневник", "Journal"), Compose(), NoteStyle.Handwritten);
             }
 
             UpdateHints();
@@ -83,28 +83,28 @@ namespace AshenWoods.UI
             var text = new StringBuilder();
             if (objectives != null && objectives.HasSteps)
             {
-                text.Append(Section("Сейчас")).Append(objectives.CurrentDescription).Append("\n\n");
+                text.Append(Section(World.Loc.Pick("Сейчас", "Now"))).Append(objectives.CurrentDescription).Append("\n\n");
             }
 
-            text.Append(Section("Что известно"));
+            text.Append(Section(World.Loc.Pick("Что известно", "What I know")));
             if (Journal.Count == 0)
             {
-                text.Append("Пока ничего. Всё, что узнаю из записок, запишу сюда.\n");
+                text.Append(World.Loc.Pick("Пока ничего. Всё, что узнаю из записок, запишу сюда.\n", "Nothing yet. Whatever I learn from the notes goes here.\n"));
             }
             else
             {
                 foreach (string line in Journal.All())
                 {
-                    text.Append("-  ").Append(line).Append('\n');
+                    text.Append("-  ").Append(TextTokens.Apply(line)).Append('\n');
                 }
             }
 
             if (SideProgress.LogsTotal > 0)
             {
                 int samples = keys != null ? SideProgress.CountSamples(keys.Keys) : 0;
-                text.Append('\n').Append(Section("Если будет время"))
-                    .Append("Прочитано журналов: ").Append(SideProgress.LogsRead).Append(" из ").Append(SideProgress.LogsTotal)
-                    .Append("\nВзято образцов B-7: ").Append(samples).Append(" из ").Append(SideProgress.SamplesTotal).Append('\n');
+                text.Append('\n').Append(Section(World.Loc.Pick("Если будет время", "If there's time")))
+                    .Append(string.Format(World.Loc.Pick("Прочитано журналов: {0} из {1}\nВзято образцов B-7: {2} из {3}\n", "Logs read: {0} of {1}\nB-7 samples taken: {2} of {3}\n"),
+                        SideProgress.LogsRead, SideProgress.LogsTotal, samples, SideProgress.SamplesTotal));
             }
 
             return text.ToString();

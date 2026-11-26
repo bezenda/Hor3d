@@ -71,6 +71,7 @@ namespace AshenWoods.GameManagement
             RunRandom.NewRun();
             AshenWoods.UI.IntroCard.ShownThisRun = false;
             AshenWoods.UI.GameTips.ResetRun();
+            AshenWoods.Player.CaughtCameraFall.CatchesThisRun = 0;
         }
 
         private void Awake()
@@ -218,7 +219,7 @@ namespace AshenWoods.GameManagement
             GameLog.Info($"[Checkpoint] Saved at step {pendingIndex} ({player.position}).", this);
             if (interactor != null)
             {
-                interactor.ShowFeedback("Прогресс сохранён");
+                interactor.ShowFeedback(World.Loc.Pick("Прогресс сохранён", "Progress saved"));
             }
 
             CheckpointSaved?.Invoke();

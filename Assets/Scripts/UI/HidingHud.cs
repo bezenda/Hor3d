@@ -165,57 +165,57 @@ namespace AshenWoods.UI
             float alpha = 1f;
             if (reaching)
             {
-                text = "Оно открывает дверцу!";
+                text = World.Loc.Pick("Оно открывает дверцу!", "It's opening the door!");
                 color = Red;
             }
             else if (listening && !holding)
             {
-                text = "Оно слышит тебя! Задержи дыхание — " + UiTheme.Key("Shift") + "!";
+                text = World.Loc.Pick("Оно слышит тебя! Задержи дыхание — ", "It hears you! Hold your breath — ") + UiTheme.Key("Shift") + "!";
                 color = Red;
                 alpha = blink;
             }
             else if (listening)
             {
-                text = "Оно стоит у дверцы и слушает… Не дыши";
+                text = World.Loc.Pick("Оно стоит у дверцы и слушает… Не дыши", "It's at the door, listening… Don't breathe");
                 color = Orange;
             }
             else if (coming)
             {
-                text = "Оно знает, что ты здесь, — вылезай и беги!";
+                text = World.Loc.Pick("Оно знает, что ты здесь, — вылезай и беги!", "It knows you're here — get out and run!");
                 color = Red;
                 alpha = blink;
             }
             else if (exhausted)
             {
-                text = "Воздух кончился — оно может услышать!";
+                text = World.Loc.Pick("Воздух кончился — оно может услышать!", "Out of air — it may hear you!");
                 color = Red;
                 alpha = blink;
             }
             else if (hearable)
             {
-                text = "Оно слышит твоё дыхание! Держи " + UiTheme.Key("Shift") + "!";
+                text = World.Loc.Pick("Оно слышит твоё дыхание! Держи ", "It hears you breathing! Hold ") + UiTheme.Key("Shift") + "!";
                 color = Red;
                 alpha = blink;
             }
             else if (checking && !holding)
             {
-                text = "Оно проверяет укрытия — не дыши!";
+                text = World.Loc.Pick("Оно проверяет укрытия — не дыши!", "It's checking hiding places — don't breathe!");
                 color = Orange;
                 alpha = blink;
             }
             else if (near && !holding)
             {
-                text = "Оно рядом — задержи дыхание";
+                text = World.Loc.Pick("Оно рядом — задержи дыхание", "It's close — hold your breath");
                 color = Orange;
             }
             else if (holding)
             {
-                text = near ? "Не дышишь… Отпусти, когда оно отойдёт" : "Не дышишь. Пока его нет рядом, можно дышать";
+                text = near ? World.Loc.Pick("Не дышишь… Отпусти, когда оно отойдёт", "Not breathing… Let go once it moves away") : World.Loc.Pick("Не дышишь. Пока его нет рядом, можно дышать", "Not breathing. While it's not around, you can breathe");
                 color = UiTheme.Ink;
             }
             else
             {
-                text = "Здесь тебя не видно. Дыхание слышно только вблизи";
+                text = World.Loc.Pick("Здесь тебя не видно. Дыхание слышно только вблизи", "It can't see you here. Your breathing carries only up close");
                 color = UiTheme.Muted;
             }
 
@@ -224,16 +224,16 @@ namespace AshenWoods.UI
             status.canvasRenderer.SetAlpha(alpha);
 
             bool burst = target != null && target.CanBurstOut;
-            string exit = burst ? $"{UiTheme.Key("E")} — выбить дверцу и бежать" : $"{UiTheme.Key("E")} — вылезти";
+            string exit = burst ? World.Loc.Pick($"{UiTheme.Key("E")} — выбить дверцу и бежать", $"{UiTheme.Key("E")} — kick the door open and run") : World.Loc.Pick($"{UiTheme.Key("E")} — вылезти", $"{UiTheme.Key("E")} — climb out");
             keys.text = holding
-                ? $"Дыхание задержано      {exit}"
-                : $"Держи {UiTheme.Key("Shift")} — задержать дыхание      {exit}";
+                ? World.Loc.Pick($"Дыхание задержано      {exit}", $"Holding breath      {exit}")
+                : World.Loc.Pick($"Держи {UiTheme.Key("Shift")} — задержать дыхание      {exit}", $"Hold {UiTheme.Key("Shift")} — hold your breath      {exit}");
             keys.color = holding ? UiTheme.Ink : UiTheme.Muted;
 
             bool low = exhausted || air < 0.3f;
             airFillImage.color = low ? Color.Lerp(Red, UiTheme.Ink, 0.5f - 0.5f * Mathf.Sin(Time.unscaledTime * 10f))
                 : holding ? UiTheme.Ink : UiTheme.Muted;
-            airLabel.text = exhausted ? "Нечем дышать" : "Воздух";
+            airLabel.text = exhausted ? World.Loc.Pick("Нечем дышать", "No air") : World.Loc.Pick("Воздух", "Air");
 
             // While it listens at the door: how sure it is. Full = it opens the door.
             shownListen = Mathf.MoveTowards(shownListen, listening || reaching ? listen : 0f, dt * 3f);
@@ -246,6 +246,8 @@ namespace AshenWoods.UI
             panel.transform.localScale = Vector3.one * scale;
         }
 
+        private float gaspHold;
+
         private void UpdateSound(bool hidden, bool holding, float proximity, float dt)
         {
             bool exhausted = motor != null && motor.IsExhausted;
@@ -254,10 +256,16 @@ namespace AshenWoods.UI
             float target = hidden && !holding && !ThreatFeedback.Suppressed
                 ? Mathf.Lerp(breathingVolume, fearBreathingVolume, proximity)
                 : 0f;
+            gaspHold = Mathf.Max(0f, gaspHold - dt);
+            if (gaspHold > 0f && hidden && !holding)
+            {
+                target = Mathf.Max(target, gaspVolume); // the first gulps of air stay loud for a moment
+            }
+
             if (breathing.clip != null)
             {
                 breathing.volume = Mathf.MoveTowards(breathing.volume, target, dt * (target > breathing.volume ? 0.8f : 4f));
-                breathing.pitch = Mathf.Lerp(0.95f, 1.08f, proximity);
+                breathing.pitch = gaspHold > 0f ? 1.18f : Mathf.Lerp(0.95f, 1.08f, proximity);
                 if (breathing.volume > 0.001f && !breathing.isPlaying)
                 {
                     breathing.time = Random.Range(0f, breathing.clip.length * 0.8f);
@@ -269,10 +277,16 @@ namespace AshenWoods.UI
                 }
             }
 
-            // Ran out of air: the gasp (the noise itself is raised by PlayerHidingController).
-            if (hidden && exhausted && !wasExhausted && wasHolding)
+            // Ran out of air: the gasp (the noise itself is raised by PlayerHidingController). The breathing loop itself
+            // restarts loud from its first breath; a separate one-shot of the same recording was heard as a double.
+            if (hidden && exhausted && !wasExhausted && wasHolding && breathing.clip != null)
             {
-                PlayOneShot(GameSound.Panting, gaspVolume, 1.18f);
+                breathing.Stop();
+                breathing.time = 0f;
+                breathing.volume = Mathf.Max(gaspVolume, target);
+                breathing.pitch = 1.18f;
+                breathing.Play();
+                gaspHold = 1.6f;
             }
 
             // Holding the breath: the heartbeat is all there is, faster when it is close.
@@ -365,7 +379,7 @@ namespace AshenWoods.UI
             listenGroup = listenRow.gameObject.AddComponent<CanvasGroup>();
             listenGroup.alpha = 0f;
             HudKit.Text(listenRow, "Label", UiTheme.SemiBold, 18, Red, new Vector2(-250f, 0f), new Vector2(160f, 24f), TextAnchor.MiddleRight)
-                .text = "Оно слышит";
+                .text = World.Loc.Pick("Оно слышит", "It hears");
             Image listenTrack = HudKit.Image(listenRow, "Track", HudKit.Square, new Vector2(60f, 0f), new Vector2(460f, 14f), UiTheme.Track);
             Image listenFillImage = HudKit.Image(listenTrack.transform, "Fill", HudKit.Square, Vector2.zero, Vector2.zero, Red);
             listenFill = listenFillImage.rectTransform;

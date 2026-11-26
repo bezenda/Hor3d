@@ -135,3 +135,17 @@ Readability pass + Russian only (2026-11-25, design in `docs/superpowers/specs/2
 - The menu scene (`MenuSceneBuilder`) builds each `Menu_Set` part once; delete a part to rebuild it.
   Its moon and stars use `Sprites/Default` so URP fog never hides them. Exterior textures are the
   Poly Haven CC0 sets castle_brick_07, roof_slates_02, leafy_grass, gravel_floor, rustic_stone_wall.
+
+
+English (owner, 2026-11-26; Russian stays the original and the default):
+- `World/Loc.cs`: language (PlayerPref `AshenWoods.Language`, 0 RU / 1 EN), `Loc.Changed`, `Loc.Pick(ru, en)` for code
+  literals, `Loc.T(ru)` for text that lives in scenes/prefabs (lookup in `Resources/Localization/en.json`, RU -> EN pairs;
+  a missing entry shows the Russian).
+- Translation happens at the sinks: `TextTokens.Apply` (notes, journal lines, hints - before tokens are filled),
+  `PlayerInteractor` (prompts and every feedback message), `ObjectiveManager.CurrentDescription`, `ObjectiveUI` heading,
+  `RoomAtlas` names, `NoteReader.Show`, `InventoryUI`/`KeyPickup.TryDisplayName`, intro card. `UI/LocalizedTexts` (auto,
+  DontDestroyOnLoad) swaps every static uGUI Text / TextMesh between the two languages by dictionary match.
+- New scene/prefab text needs a pair in `en.json`; new code text is written as `Loc.Pick`. Keep tokens/tags identical.
+- UI: `LanguageBuilder` (from `InterfaceRedesignBuilder.Apply`) adds `Row_Language` to every SettingsMenu and the
+  `LanguageSwitch` (RU / EN frame, top right) to the title screen. World signs on the title screen are world-space
+  uGUI Text (TextMesh broke apart when the shared dynamic font atlas was rebuilt).

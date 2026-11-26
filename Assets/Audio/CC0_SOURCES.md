@@ -32,7 +32,9 @@ ringing, power restored). Downloaded 2026-11-10.
 | AmbienceEvent | basement_drop | https://freesound.org/people/RutgerMuller/sounds/104056/ | RutgerMuller |
 | AmbienceEvent | steam_hiss_1..5 | https://opengameart.org/content/steam-release-sounds | bart |
 | AmbienceEvent | metal_interaction1/2, metal_swing1 | https://opengameart.org/content/metal-interactions | qubodup |
-| ChaseLoop | chase_loop | https://freesound.org/people/PearceWilsonKing/sounds/422274/ | PearceWilsonKing |
+| ChaseLoop | chase_killer | https://freesound.org/people/Satanen/sounds/317385/ | Satanen |
+| ChaseLoop | chase_drones | https://freesound.org/people/burning-mir/sounds/155139/ | burning-mir |
+| ChaseLoop | chase_heartbeats | https://freesound.org/people/Victor_Natas/sounds/642313/ | Victor_Natas |
 | TensionLoop | tension_drone | https://freesound.org/people/HarmonicMess/sounds/826597/ | HarmonicMess |
 | StepMetal | metal_step_01..06 | https://freesound.org/people/IENBA/sounds/698697/ | IENBA |
 | StepConcrete | concrete_step_01..08 | https://freesound.org/people/florianreichelt/sounds/459964/ | florianreichelt |
@@ -54,9 +56,44 @@ Drop any other recording into one of these folders to replace or add a variant.
 | UiStart | uistart_breaker_2 | BreakerSwitch (freesound sribubba, CC0) |
 | UiPaper | uipaper_cloth2/4 | Rustle (Kenney RPG Audio, CC0) |
 
+A 2026-11-26 try with Kenney Interface Sounds (`Staging/KenneyInterface/`, CC0) was rejected by the owner: too
+cute for a horror game. Keep the metal sounds.
+
 ## Keypad alarm (added 2026-11-25)
 
 | Folder | File | Source | Author / licence |
 | --- | --- | --- | --- |
 | KeypadAlarm | keypad_short_alarm | https://opengameart.org/content/short-alarm (alarm.ogg) | OpenGameArt CC0 (downloaded 2026-11-25) |
 | KeypadAlarm | keypad_alarm_1 | https://opengameart.org/content/alarm-1 (alarm_3.ogg) | OpenGameArt CC0 (downloaded 2026-11-25) |
+| Crunch | crunch_1 | https://freesound.org/people/GreatNate98/sounds/355052/ | GreatNate98 |
+| Crunch | crunch_2 | https://freesound.org/people/BrassKnucklesFilms/sounds/192146/ | BrassKnucklesFilms |
+| Crunch | crunch_3 | https://freesound.org/people/cinevid/sounds/144159/ | cinevid |
+| Drip | drip_single | https://freesound.org/people/beskhu/sounds/273870/ | beskhu |
+| Drip | drip_droplets_01..11 | https://freesound.org/people/Legnalegna55/sounds/543649/ | Legnalegna55 |
+| Drip | drip_cave_01..12 | https://freesound.org/people/Sclolex/sounds/177958/ | Sclolex |
+
+Crunch and Drip: Freesound HQ previews of the CC0 originals, downloaded 2026-11-26, cut by SoundPrep.
+
+Chase tracks (2026-11-26): Freesound HQ previews (mp3, stereo, streamed) of CC0 originals, used whole by ChaseMusic. The old
+loop (PearceWilsonKing, 422274) is parked in `Audio_Unused/ChaseLoop`.
+
+## Electric pipe (added 2026-11-26)
+
+| Folder | File(s) | Source |
+| --- | --- | --- |
+| Spark | spark_spt, spark_continuous_spt | "Electricity Sound Effects" by SPT SFX, https://opengameart.org/content/electricity-sound-effects-0 (CC0) |
+| Shock | shock_hit | hit.wav from "Electricity Game Sound Pack", https://opengameart.org/content/electricity-game-sound-pack (CC0) |
+
+Raw downloads stay in `Staging/Electric/` (with spare Kenney Sci-Fi `forceField_*` buzzes, CC0, https://kenney.nl/assets/sci-fi-sounds).
+
+## Enemy voice (added 2026-11-26)
+
+Owner-supplied takes (dropped in by the owner, personal use; not CC0), raw in `Staging/EnemyVoice/`:
+`caught_stalker.mp3` -> `EnemyCaught/caught_stalker.wav`, `found_you.mp3` -> `EnemyFound/found_you.wav`, both made
+inhuman by `SoundPrep.Monster` (pitch down, ring modulation, tanh drive, tone filter, normalised).
+
+## Title music (added 2026-11-26)
+
+| Folder | File | Source |
+| --- | --- | --- |
+| MenuMusic | main_menu.mp3 | Owner-supplied (from `Audio_Unused/` in the project root), personal use |

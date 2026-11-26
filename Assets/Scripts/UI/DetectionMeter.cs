@@ -357,75 +357,75 @@ namespace AshenWoods.UI
                 case Look.Suspicious:
                     if (enemy != null && enemy.CanSeeTarget)
                     {
-                        line = "Видит тебя…";
-                        urgent = "Уйди из поля зрения!";
+                        line = World.Loc.Pick("Видит тебя…", "It sees you…");
+                        urgent = World.Loc.Pick("Уйди из поля зрения!", "Get out of sight!");
                     }
                     else
                     {
-                        line = "Что-то заметило…";
+                        line = World.Loc.Pick("Что-то заметило…", "Something noticed…");
                     }
 
                     break;
                 case Look.Investigating:
-                    line = "Что-то услышало — идёт проверить";
+                    line = World.Loc.Pick("Что-то услышало — идёт проверить", "It heard something — coming to check");
                     break;
                 case Look.Searching:
-                    line = "Потеряло тебя из виду и ищет";
+                    line = World.Loc.Pick("Потеряло тебя из виду и ищет", "Lost sight of you — searching");
                     break;
                 case Look.Checking:
                     if (enemy != null && enemy.IsListeningAtHidingPlace)
                     {
-                        line = "Прислушивается…";
-                        urgent = hidden ? "Не дыши — держи " + UiTheme.Key("Shift") : string.Empty;
+                        line = World.Loc.Pick("Прислушивается…", "Listening…");
+                        urgent = hidden ? World.Loc.Pick("Не дыши — держи ", "Don't breathe — hold ") + UiTheme.Key("Shift") : string.Empty;
                     }
                     else
                     {
-                        line = "Проверяет укрытия";
-                        urgent = hidden ? "Задержи дыхание — " + UiTheme.Key("Shift") : string.Empty;
+                        line = World.Loc.Pick("Проверяет укрытия", "Checking hiding places");
+                        urgent = hidden ? World.Loc.Pick("Задержи дыхание — ", "Hold your breath — ") + UiTheme.Key("Shift") : string.Empty;
                     }
 
                     break;
                 case Look.Chase:
                     if (enemy != null && !enemy.CanSeeTarget && Time.time - enemy.HeardTargetAt < 6f)
                     {
-                        line = "Слышит тебя — идёт прямо на тебя!";
+                        line = World.Loc.Pick("Слышит тебя — идёт прямо на тебя!", "It hears you — coming straight at you!");
                     }
                     else
                     {
-                        line = enemy != null && enemy.CanSeeTarget ? "Видит тебя!" : "Гонится за тобой!";
+                        line = enemy != null && enemy.CanSeeTarget ? World.Loc.Pick("Видит тебя!", "It sees you!") : World.Loc.Pick("Гонится за тобой!", "It's chasing you!");
                     }
 
-                    urgent = hidden ? string.Empty : "Беги и прячься";
+                    urgent = hidden ? string.Empty : World.Loc.Pick("Беги и прячься", "Run and hide");
                     break;
                 case Look.Knows:
-                    line = "Знает, где ты";
+                    line = World.Loc.Pick("Знает, где ты", "It knows where you are");
                     if (hidden && enemy != null && enemy.IsReachingForHidingPlace)
                     {
-                        line = "Услышало тебя";
-                        urgent = "Открывает дверцу!";
+                        line = World.Loc.Pick("Услышало тебя", "It heard you");
+                        urgent = World.Loc.Pick("Открывает дверцу!", "It's opening the door!");
                     }
                     else if (hidden && enemy != null && enemy.IsComingForHiddenTarget)
                     {
                         float stare = enemy.HideStareRemaining;
                         urgent = stare > 0f
-                            ? "Оно видело, где ты! Вылезай (" + UiTheme.Key("E") + ") и беги!"
-                            : "Оно идёт за тобой — вылезай и беги!";
+                            ? World.Loc.Pick("Оно видело, где ты! Вылезай (", "It saw where you are! Get out (") + UiTheme.Key("E") + World.Loc.Pick(") и беги!", ") and run!")
+                            : World.Loc.Pick("Оно идёт за тобой — вылезай и беги!", "It's coming for you — get out and run!");
                     }
                     else
                     {
-                        urgent = "Прятаться бесполезно";
+                        urgent = World.Loc.Pick("Прятаться бесполезно", "Hiding won't help");
                     }
 
                     break;
                 case Look.Stunned:
-                    line = enemy != null ? $"Оглушено — ещё {Mathf.CeilToInt(enemy.DazeRemaining)} с" : "Оглушено";
-                    urgent = "Уходи, пока оно лежит";
+                    line = enemy != null ? World.Loc.Pick($"Оглушено — ещё {Mathf.CeilToInt(enemy.DazeRemaining)} с", $"Stunned — {Mathf.CeilToInt(enemy.DazeRemaining)} s left") : World.Loc.Pick("Оглушено", "Stunned");
+                    urgent = World.Loc.Pick("Уходи, пока оно лежит", "Go while it's down");
                     break;
                 case Look.Retreating:
-                    line = "Уходит";
+                    line = World.Loc.Pick("Уходит", "Leaving");
                     break;
                 default:
-                    line = "Тебя не замечают";
+                    line = World.Loc.Pick("Тебя не замечают", "You're unnoticed");
                     break;
             }
 
@@ -476,8 +476,8 @@ namespace AshenWoods.UI
                 noiseSegments[i].color = i < lit ? on : UiTheme.Track;
             }
 
-            string word = noise < 0.05f ? "тихо" : noise < 0.4f ? "слышно" : noise < 0.75f ? "шумно" : "очень громко";
-            noiseLabel.text = "Шум: " + word;
+            string word = noise < 0.05f ? World.Loc.Pick("тихо", "quiet") : noise < 0.4f ? World.Loc.Pick("слышно", "audible") : noise < 0.75f ? World.Loc.Pick("шумно", "noisy") : World.Loc.Pick("очень громко", "very loud");
+            noiseLabel.text = World.Loc.Pick("Шум: ", "Noise: ") + word;
             noiseLabel.color = noise < 0.4f ? Grey : noise < 0.75f ? Yellow : Red;
         }
 

@@ -38,6 +38,13 @@ namespace AshenWoods.UI
                 },
                 new Row
                 {
+                    // Each language is named in itself, so it can be found whichever one is showing.
+                    Name = "Language",
+                    Read = () => AshenWoods.World.Loc.English ? "English" : "Русский",
+                    Step = d => { AshenWoods.World.Loc.Language = AshenWoods.World.Loc.English ? AshenWoods.World.GameLanguage.Russian : AshenWoods.World.GameLanguage.English; }
+                },
+                new Row
+                {
                     Name = "Quality",
                     Read = () => GameSettings.QualityNames[GameSettings.Quality],
                     Step = d => { GameSettings.Quality = Wrap(GameSettings.Quality + d, GameSettings.QualityNames.Length); GameSettings.ApplyQuality(); }
@@ -51,7 +58,7 @@ namespace AshenWoods.UI
                 new Row
                 {
                     Name = "VSync",
-                    Read = () => GameSettings.VSync ? "Вкл" : "Выкл",
+                    Read = () => GameSettings.VSync ? World.Loc.Pick("Вкл", "On") : World.Loc.Pick("Выкл", "Off"),
                     Step = d => { GameSettings.VSync = !GameSettings.VSync; GameSettings.ApplyFrameRate(); }
                 },
                 new Row
@@ -143,11 +150,6 @@ namespace AshenWoods.UI
             }
         }
 
-        private void OnEnable()
-        {
-            Refresh();
-        }
-
         private void Wire()
         {
             if (wired)
@@ -176,6 +178,17 @@ namespace AshenWoods.UI
             PlayerPrefs.Save();
             UiSound.Step(delta);
             Refresh();
+        }
+
+        private void OnEnable()
+        {
+            AshenWoods.World.Loc.Changed += Refresh;
+            Refresh();
+        }
+
+        private void OnDisable()
+        {
+            AshenWoods.World.Loc.Changed -= Refresh;
         }
 
         /// <summary>Redraws every value.</summary>

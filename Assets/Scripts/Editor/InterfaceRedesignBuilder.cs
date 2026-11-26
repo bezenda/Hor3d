@@ -50,7 +50,7 @@ namespace AshenWoods.EditorTools
         /// <summary>Restyles whatever interface the open scene has. Returns a rough count of touched pieces.</summary>
         public static int Apply()
         {
-            int changed = 0;
+            int changed = LanguageBuilder.EnsureRows(); // before the layout pass, which places the new row
             GameObject menuCanvas = GameObject.Find("Menu_Canvas");
             if (menuCanvas != null)
             {
@@ -65,6 +65,7 @@ namespace AshenWoods.EditorTools
 
             // Russian only (2026-11-25): whatever a builder wrote in English becomes Russian. Every scene chain ends here.
             changed += RussianText.ApplyToOpenScene();
+            changed += LanguageBuilder.EnsureTitleSwitch();
             return changed;
         }
 

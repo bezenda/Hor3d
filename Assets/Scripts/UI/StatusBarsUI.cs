@@ -78,7 +78,7 @@ namespace AshenWoods.UI
 
             if (staminaLabel != null)
             {
-                string text = motor.IsExhausted ? "Нет сил" : "Выносливость";
+                string text = motor.IsExhausted ? World.Loc.Pick("Нет сил", "Exhausted") : World.Loc.Pick("Выносливость", "Stamina");
                 if (staminaLabel.text != text)
                 {
                     staminaLabel.text = text;
@@ -148,13 +148,13 @@ namespace AshenWoods.UI
                 switch (state)
                 {
                     case 0:
-                        flashLabel.text = $"Вспышка готова — <color=#{accentHex}>ПКМ</color>";
+                        flashLabel.text = World.Loc.Pick($"Вспышка готова — <color=#{accentHex}>ПКМ</color>", $"Flash ready — <color=#{accentHex}>RMB</color>");
                         break;
                     case 1:
-                        flashLabel.text = $"Вспышка через {seconds} с";
+                        flashLabel.text = World.Loc.Pick($"Вспышка через {seconds} с", $"Flash in {seconds} s");
                         break;
                     default:
-                        flashLabel.text = $"Для вспышки нужно {cost} заряда";
+                        flashLabel.text = World.Loc.Pick($"Для вспышки нужно {cost} заряда", $"The flash needs {cost} charge");
                         break;
                 }
 

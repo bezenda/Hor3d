@@ -66,6 +66,7 @@ namespace AshenWoods.EditorTools
             changed += Part(set, "Station_Ash", AshFall);
             changed += Part(set, "Station_Embers", Embers);
             changed += Part(set, "Station_Horizon", Horizon);
+            changed += BuildWinter(set); // title screen v3: snow, clutter, details, VFX
             return changed;
         }
 
@@ -137,12 +138,12 @@ namespace AshenWoods.EditorTools
                 Cylinder(part, $"Bollard_{x}", new Vector3(x, 0.6f, front + 1.4f), 0.17f, 1.2f, Hazard);
             }
 
-            // A staff door with its lamp and exit sign.
-            Box(part, "Door_Frame", new Vector3(5f, 1.3f, front + 0.08f), new Vector3(1.5f, 2.6f, 0.3f), Metal);
-            Box(part, "Door_Leaf", new Vector3(5f, 1.2f, front + 0.25f), new Vector3(1.1f, 2.3f, 0.06f), Panel);
-            Box(part, "Door_Exit", new Vector3(5f, 2.78f, front + 0.26f), new Vector3(0.62f, 0.2f, 0.06f), ExitSign);
-            GameObject doorLamp = Box(part, "Door_Lamp", new Vector3(5f, 3.25f, front + 0.35f), new Vector3(0.5f, 0.16f, 0.32f), Sodium);
-            Lamp(part, "Door_Light", new Vector3(5f, 3.1f, front + 0.8f), new Color(1f, 0.64f, 0.32f), 2.4f, 7f,
+            // A staff door with its lamp and exit sign, in the middle of the 4.5..10.5 bay (it stood behind the pilaster).
+            Box(part, "Door_Frame", new Vector3(7.5f, 1.3f, front + 0.08f), new Vector3(1.5f, 2.6f, 0.3f), Metal);
+            Box(part, "Door_Leaf", new Vector3(7.5f, 1.2f, front + 0.25f), new Vector3(1.1f, 2.3f, 0.06f), Panel);
+            Box(part, "Door_Exit", new Vector3(7.5f, 2.78f, front + 0.26f), new Vector3(0.62f, 0.2f, 0.06f), ExitSign);
+            GameObject doorLamp = Box(part, "Door_Lamp", new Vector3(7.5f, 3.25f, front + 0.35f), new Vector3(0.5f, 0.16f, 0.32f), Sodium);
+            Lamp(part, "Door_Light", new Vector3(7.5f, 3.1f, front + 0.8f), new Color(1f, 0.64f, 0.32f), 2.4f, 7f,
                 SceneryLight.Mode.Stutter, 1f, doorLamp.GetComponent<Renderer>());
         }
 

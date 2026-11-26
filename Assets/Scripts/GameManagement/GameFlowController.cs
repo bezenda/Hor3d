@@ -74,6 +74,8 @@ namespace AshenWoods.GameManagement
         [SerializeField, Min(0f)] private float deathFadeHoldSeconds = 1.4f;
         [SerializeField, Min(0f)] private float escapeDelaySeconds = 2.2f;
 
+        private AshenWoods.Player.CaughtCameraFall catchScene;
+
         [Header("Colours")]
         [SerializeField] private Color deathFadeColor = new Color(0f, 0f, 0f, 1f);
         [SerializeField] private Color escapeFadeColor = new Color(0f, 0f, 0f, 1f);
@@ -83,7 +85,7 @@ namespace AshenWoods.GameManagement
 
         [Header("Opening")]
         [Tooltip("First line of the card shown at the start of a fresh run. Empty: no card.")]
-        [SerializeField] private string introPlace = "Исследовательская станция «Пепельный лес»";
+        [SerializeField] private string introPlace = "Исследовательская станция «Ashen Woods»";
 
         [TextArea]
         [SerializeField] private string introSituation =
@@ -148,6 +150,15 @@ namespace AshenWoods.GameManagement
                 gameObject.AddComponent<CheckpointSystem>();
             }
 
+            // Paces the fear between encounters (catch v2 / director spec, 2026-11-26).
+            TensionDirector director = GetComponent<TensionDirector>();
+            if (director == null)
+            {
+                director = gameObject.AddComponent<TensionDirector>();
+            }
+
+            director.Bind(player);
+
             if (GetComponent<AshenWoods.UI.JournalKey>() == null)
             {
                 gameObject.AddComponent<AshenWoods.UI.JournalKey>();
@@ -181,6 +192,7 @@ namespace AshenWoods.GameManagement
             {
                 player.RespawnOnCaught = false;
                 player.Caught += OnCaught;
+                catchScene = player.GetComponent<AshenWoods.Player.CaughtCameraFall>();
             }
 
             if (objectives != null)
@@ -233,7 +245,7 @@ namespace AshenWoods.GameManagement
             // A fresh run opens with where you are; a checkpoint reload goes straight back to it.
             if (!CheckpointSystem.HasCheckpoint && !AshenWoods.UI.IntroCard.ShownThisRun && !string.IsNullOrEmpty(introPlace))
             {
-                AshenWoods.UI.IntroCard.Show(introPlace, introSituation);
+                AshenWoods.UI.IntroCard.Show(World.Loc.T(introPlace), World.Loc.T(introSituation));
             }
         }
 
@@ -249,7 +261,17 @@ namespace AshenWoods.GameManagement
                     break;
 
                 case RunState.Dying:
-                    TickEnding(deltaTime, deathDelaySeconds, deathFadeHoldSeconds, deathFadeColor, RunState.Dead, deathPanel, deathRetryButton);
+                    if (catchScene != null && catchScene.IsPlaying)
+                    {
+                        // The catch scene sets the pace and draws its own cut to black; a skip jumps its clock.
+                        stateTimer = Mathf.Max(stateTimer, catchScene.Elapsed - deltaTime);
+                        TickEnding(deltaTime, catchScene.Duration, catchScene.Duration * 0.94f, deathFadeColor, RunState.Dead, deathPanel, deathRetryButton);
+                    }
+                    else
+                    {
+                        TickEnding(deltaTime, deathDelaySeconds, deathFadeHoldSeconds, deathFadeColor, RunState.Dead, deathPanel, deathRetryButton);
+                    }
+
                     break;
 
                 case RunState.Escaping:
@@ -289,30 +311,29 @@ namespace AshenWoods.GameManagement
             switch (AshenWoods.Enemy.EnemyBrain.LastCatchCause)
             {
                 case AshenWoods.Enemy.CatchCause.WatchedHide:
-                    return "Оно видело, как ты прячешься. Прячься, только когда оно не смотрит, " +
-                           "а если заметило — вылезай и беги, пока оно стоит.";
+                    return World.Loc.Pick("Оно видело, как ты прячешься. Прячься, только когда оно не смотрит, а если заметило — вылезай и беги, пока оно стоит.", "It saw you hide. Only hide when it isn't looking — and if it has spotted you, get out and run while it stands there.");
                 case AshenWoods.Enemy.CatchCause.HeardBreath:
-                    return "Оно стояло у дверцы и слышало твоё дыхание. Увидишь «Оно слышит тебя» — держи Shift или выбей дверцу (E) и беги.";
+                    return World.Loc.Pick("Оно стояло у дверцы и слышало твоё дыхание. Увидишь «Оно слышит тебя» — держи Shift или выбей дверцу (E) и беги.", "It stood at the door and heard you breathing. When you see \"It hears you\", hold Shift — or kick the door open (E) and run.");
                 case AshenWoods.Enemy.CatchCause.CheckedHide:
-                    return "Оно проверяло укрытия и услышало дыхание. Держи Shift, пока оно не отойдёт, или выбей дверцу (E) и беги.";
+                    return World.Loc.Pick("Оно проверяло укрытия и услышало дыхание. Держи Shift, пока оно не отойдёт, или выбей дверцу (E) и беги.", "It was checking hiding places and heard you breathe. Hold Shift until it moves away — or kick the door open (E) and run.");
             }
 
             if (now - lastExhausted < 4f)
             {
-                return "Силы кончились на бегу. Беги короткими рывками и останавливайся, пока выносливость не на нуле.";
+                return World.Loc.Pick("Силы кончились на бегу. Беги короткими рывками и останавливайся, пока выносливость не на нуле.", "You ran out of stamina mid-sprint. Run in short bursts and stop before the bar hits zero.");
             }
 
             if (now - lastLit < 2f)
             {
-                return "Тебя выдал фонарь. Свет оно видит гораздо раньше, чем тебя.";
+                return World.Loc.Pick("Тебя выдал фонарь. Свет оно видит гораздо раньше, чем тебя.", "Your torch gave you away. It sees the light long before it sees you.");
             }
 
             if (now - lastHidden < 3f)
             {
-                return "Оно нашло твоё укрытие. Не прячься у него на глазах и держи Shift, когда оно рядом.";
+                return World.Loc.Pick("Оно нашло твоё укрытие. Не прячься у него на глазах и держи Shift, когда оно рядом.", "It found your hiding place. Don't hide in front of it, and hold Shift when it's close.");
             }
 
-            return "Оно охотится на звук. Иди шагом, пригибайся (Ctrl) и бросай предметы (ЛКМ), чтобы увести его.";
+            return World.Loc.Pick("Оно охотится на звук. Иди шагом, пригибайся (Ctrl) и бросай предметы (ЛКМ), чтобы увести его.", "It hunts by sound. Walk, crouch (Ctrl) and throw things (LMB) to lead it away.");
         }
 
         private void OnCaught(Vector3 enemyPosition)
@@ -332,7 +353,7 @@ namespace AshenWoods.GameManagement
                 Text retryLabel = deathRetryButton.GetComponentInChildren<Text>(true);
                 if (retryLabel != null)
                 {
-                    retryLabel.text = CheckpointSystem.HasCheckpoint ? "Вернуться к сохранению" : "Попробовать снова";
+                    retryLabel.text = CheckpointSystem.HasCheckpoint ? World.Loc.Pick("Вернуться к сохранению", "Back to the checkpoint") : World.Loc.Pick("Попробовать снова", "Try again");
                 }
             }
 
@@ -399,7 +420,7 @@ namespace AshenWoods.GameManagement
 
             if (next == RunState.Won && completedDetail != null)
             {
-                completedDetail.text = FormatDuration(runSeconds) + " в темноте." + EndingLines();
+                completedDetail.text = FormatDuration(runSeconds) + World.Loc.Pick(" в темноте.", " in the dark.") + EndingLines();
             }
 
             SetActive(panel, true);
@@ -452,24 +473,24 @@ namespace AshenWoods.GameManagement
             string ending;
             if (evidence && truth)
             {
-                ending = Heading("Вся правда") + "Ты знаешь, что Хейл создала там внизу, и доказательства у тебя в кармане. Теперь им придётся слушать.";
+                ending = Heading(World.Loc.Pick("Вся правда", "The whole truth")) + World.Loc.Pick("Ты знаешь, что Хейл создала там внизу, и доказательства у тебя в кармане. Теперь им придётся слушать.", "You know what Hale made down there, and the proof is in your pocket. Now they will have to listen.");
             }
             else if (evidence)
             {
-                ending = Heading("Улики") + "В кармане звякают три запаянных образца B-7. Кто-то захочет узнать, откуда они.";
+                ending = Heading(World.Loc.Pick("Улики", "Evidence")) + World.Loc.Pick("В кармане звякают три запаянных образца B-7. Кто-то захочет узнать, откуда они.", "Three sealed B-7 samples clink in your pocket. Someone will want to know where they came from.");
             }
             else if (truth)
             {
-                ending = Heading("Свидетель") + "Все журналы прочитаны. Ты знаешь, что такое B-7, — и знаешь, что тебе никто не поверит.";
+                ending = Heading(World.Loc.Pick("Свидетель", "Witness")) + World.Loc.Pick("Все журналы прочитаны. Ты знаешь, что такое B-7, — и знаешь, что тебе никто не поверит.", "Every log read. You know what B-7 is — and you know no one will believe you.");
             }
             else
             {
-                ending = Heading("Спасение") + "Ты не знаешь, что это было. И не хочешь знать.";
+                ending = Heading(World.Loc.Pick("Спасение", "Escape")) + World.Loc.Pick("Ты не знаешь, что это было. И не хочешь знать.", "You don't know what that was. And you don't want to.");
             }
 
             return "\n\n" + ending +
-                   "\n\nПрочитано журналов: " + AshenWoods.World.SideProgress.LogsRead + " из " + AshenWoods.World.SideProgress.LogsTotal +
-                   "      Образцы B-7: " + samples + " из " + AshenWoods.World.SideProgress.SamplesTotal;
+                   string.Format(World.Loc.Pick("\n\nПрочитано журналов: {0} из {1}      Образцы B-7: {2} из {3}", "\n\nLogs read: {0} of {1}      B-7 samples: {2} of {3}"),
+                       AshenWoods.World.SideProgress.LogsRead, AshenWoods.World.SideProgress.LogsTotal, samples, AshenWoods.World.SideProgress.SamplesTotal);
         }
 
         private static string Heading(string title)
@@ -569,13 +590,14 @@ namespace AshenWoods.GameManagement
             int total = Mathf.Max(0, Mathf.FloorToInt(seconds));
             int minutes = total / 60;
             int rest = total % 60;
-            string secondsText = rest + " " + Plural(rest, "секунда", "секунды", "секунд");
+            string secondsText = World.Loc.English ? rest + (rest == 1 ? " second" : " seconds") : rest + " " + Plural(rest, "секунда", "секунды", "секунд");
             if (minutes == 0)
             {
                 return secondsText;
             }
 
-            return minutes + " " + Plural(minutes, "минута", "минуты", "минут") + " " + secondsText;
+            return World.Loc.English ? minutes + (minutes == 1 ? " minute " : " minutes ") + secondsText
+                : minutes + " " + Plural(minutes, "минута", "минуты", "минут") + " " + secondsText;
         }
 
         /// <summary>Russian noun form for a count: 1 минута, 2 минуты, 5 минут, 21 минута.</summary>

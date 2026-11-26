@@ -136,6 +136,7 @@ namespace AshenWoods.EditorTools
             added += SetUpBriefing();
             added += SetUpProps2();
             added += SetUpProps2Fix();
+            added += SetUpShockPipe();
             added += InterfaceRedesignBuilder.Apply();
 
             AssetDatabase.SaveAssets();

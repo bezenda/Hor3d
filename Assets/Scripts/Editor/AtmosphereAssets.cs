@@ -83,7 +83,7 @@ namespace AshenWoods.EditorTools
         }
 
         /// <summary>Lit, alpha-blended surface for marks on walls and floors (and cobwebs, both faces).</summary>
-        private static Material Decal(string name, Texture2D texture, float smoothness, bool bothFaces = false)
+        internal static Material Decal(string name, Texture2D texture, float smoothness, bool bothFaces = false)
         {
             Material decal = EnsureMaterial(name, LitShader, material =>
             {

@@ -91,7 +91,7 @@ namespace AshenWoods.UI
 
             if (objectives == null || !objectives.HasSteps)
             {
-                objectiveText.text = Heading() + missingChainText;
+                objectiveText.text = Heading() + World.Loc.T(missingChainText);
                 objectiveText.color = normalColor;
                 return;
             }
@@ -134,10 +134,10 @@ namespace AshenWoods.UI
 
             if (!objectiveText.supportRichText)
             {
-                return heading + "\n";
+                return World.Loc.T(heading) + "\n";
             }
 
-            return $"<size={headingSize}><color=#{ColorUtility.ToHtmlStringRGB(headingColor)}>{heading}</color></size>\n";
+            return $"<size={headingSize}><color=#{ColorUtility.ToHtmlStringRGB(headingColor)}>{World.Loc.T(heading)}</color></size>\n";
         }
     }
 }

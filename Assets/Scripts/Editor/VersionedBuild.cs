@@ -13,17 +13,23 @@ using UnityEngine;
 /// (Application.version) and names the folder and the zip:
 ///   Builds/AshenWoods_0.1.2/Ashen Woods.exe  +  Builds/AshenWoods_0.1.2.zip
 /// A version folder that already exists is never written into: one folder, one build, one exe.
-/// Every build ships CHANGELOG.txt (the project-root file). Its "Unreleased" section must list what changed,
-/// or nothing is built; after a successful build that section is renamed to the new version and a fresh,
-/// empty "Unreleased" section is put above it.
+/// Every build ships the player-facing change lists in Russian and English (owner, 2026-11-26): CHANGELOG.txt and
+/// CHANGELOG_EN.txt in the project root, copied as CHANGELOG_RU.txt / CHANGELOG_EN.txt next to the exe and into the zip.
+/// Both "Unreleased" sections must list what changed, or nothing is built; after a successful build each section is
+/// renamed to the new version and a fresh, empty "Unreleased" section is put above it. The version shown in the title
+/// screen corner is Application.version, i.e. the bundleVersion written here.
 /// </summary>
 public static class VersionedBuild
 {
     const string BuildsFolder = "Builds";
     const string FolderPrefix = "AshenWoods_";
     const string ExeName = "Ashen Woods.exe";
-    const string ChangelogName = "CHANGELOG.txt";
-    const string UnreleasedHeader = "== Не выпущено ==";
+    // Project-root file, its "Unreleased" header, the name it ships under.
+    static readonly (string File, string Unreleased, string Shipped)[] Changelogs =
+    {
+        ("CHANGELOG.txt", "== Не выпущено ==", "CHANGELOG_RU.txt"),
+        ("CHANGELOG_EN.txt", "== Unreleased ==", "CHANGELOG_EN.txt"),
+    };
 
     [MenuItem("Ashen Woods/Build/Windows Build - Next Patch (0.y.Z)")]
     static void BuildPatchMenu() => Build(false);
@@ -47,13 +53,15 @@ public static class VersionedBuild
             return refused;
         }
 
-        string changelog = Path.Combine(root, "..", ChangelogName);
-        if (!HasUnreleasedNotes(changelog))
+        foreach (var log in Changelogs)
         {
-            string refused = "VersionedBuild: " + ChangelogName + " has no notes under \"" + UnreleasedHeader
-                             + "\" - write what changed in this build first. Nothing built.";
-            Debug.LogError(refused);
-            return refused;
+            if (!HasUnreleasedNotes(Path.Combine(root, "..", log.File), log.Unreleased))
+            {
+                string refused = "VersionedBuild: " + log.File + " has no notes under \"" + log.Unreleased
+                                 + "\" - write what changed in this build first (Russian and English). Nothing built.";
+                Debug.LogError(refused);
+                return refused;
+            }
         }
 
         string[] scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
@@ -85,11 +93,16 @@ public static class VersionedBuild
             return failed;
         }
 
-        ReleaseChangelog(changelog, version);
-        File.Copy(changelog, Path.Combine(folder, ChangelogName));
+        foreach (var log in Changelogs)
+        {
+            string path = Path.Combine(root, "..", log.File);
+            ReleaseChangelog(path, log.Unreleased, version);
+            File.Copy(path, Path.Combine(folder, log.Shipped));
+        }
+
         Zip(folder, zip);
         string done = "VersionedBuild: " + version + " built in " + summary.totalTime.TotalSeconds.ToString("0") + " s -> "
-                      + Path.Combine(folder, ExeName) + " + " + ChangelogName + " and " + Path.GetFileName(zip)
+                      + Path.Combine(folder, ExeName) + " + CHANGELOG_RU/EN and " + Path.GetFileName(zip)
                       + " (" + (new FileInfo(zip).Length / (1024f * 1024f)).ToString("0") + " MB)";
         Debug.Log(done);
         return done;
@@ -106,12 +119,12 @@ public static class VersionedBuild
     }
 
     /// <summary>True when the changelog's "Unreleased" section holds at least one non-empty line.</summary>
-    static bool HasUnreleasedNotes(string changelog)
+    static bool HasUnreleasedNotes(string changelog, string unreleased)
     {
         if (!File.Exists(changelog))
             return false;
         string[] lines = File.ReadAllLines(changelog);
-        int start = Array.IndexOf(lines, UnreleasedHeader);
+        int start = Array.IndexOf(lines, unreleased);
         if (start < 0)
             return false;
         for (int i = start + 1; i < lines.Length && !lines[i].StartsWith("== ", StringComparison.Ordinal); i++)
@@ -121,12 +134,12 @@ public static class VersionedBuild
     }
 
     /// <summary>Turns the "Unreleased" section into "== version - date ==" under a new empty "Unreleased".</summary>
-    static void ReleaseChangelog(string changelog, string version)
+    static void ReleaseChangelog(string changelog, string unreleased, string version)
     {
         var lines = File.ReadAllLines(changelog).ToList();
-        int start = lines.IndexOf(UnreleasedHeader);
+        int start = lines.IndexOf(unreleased);
         lines[start] = "== " + version + " - " + DateTime.Now.ToString("yyyy-MM-dd") + " ==";
-        lines.InsertRange(start, new[] { UnreleasedHeader, "" });
+        lines.InsertRange(start, new[] { unreleased, "" });
         File.WriteAllLines(changelog, lines, new System.Text.UTF8Encoding(true));
     }
 

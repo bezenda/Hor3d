@@ -87,9 +87,20 @@ namespace AshenWoods.Enemy
                 return;
             }
 
+            // The serialized numbers were tuned for an earlier, bigger head; on a smaller one they left the eyes floating
+            // beside the face (plain in the catch close-up). Clamp them to the head's own size when the rig shows it.
+            float eyeSpacing = spacing, eyeForward = forward, eyeUp = up;
+            float headSize = HeadSize();
+            if (headSize > 0f)
+            {
+                eyeSpacing = Mathf.Min(eyeSpacing, headSize * 0.36f);
+                eyeForward = Mathf.Min(eyeForward, headSize * 0.48f);
+                eyeUp = Mathf.Min(eyeUp, headSize * 0.42f);
+            }
+
             Vector3 centre = (head != null ? head.position : transform.position + Vector3.up * fallbackHeight)
-                             + transform.forward * forward + Vector3.up * up;
-            Vector3 side = transform.right * (spacing * 0.5f);
+                             + transform.forward * eyeForward + Vector3.up * eyeUp;
+            Vector3 side = transform.right * (eyeSpacing * 0.5f);
 
             Place(left, anchor, centre - side);
             Place(right, anchor, centre + side);
@@ -149,6 +160,28 @@ namespace AshenWoods.Enemy
             leftEye = sumA / countA;
             rightEye = sumB / countB;
             return true;
+        }
+
+        /// <summary>Head height from the head bone to its farthest child end bone (Mixamo HeadTop_End); 0 if unknown.</summary>
+        private float HeadSize()
+        {
+            if (head == null)
+            {
+                return 0f;
+            }
+
+            float size = 0f;
+            foreach (Transform bone in head.GetComponentsInChildren<Transform>(true))
+            {
+                if (bone == head || bone == left || bone == right || bone.name.StartsWith("EyeGlow"))
+                {
+                    continue;
+                }
+
+                size = Mathf.Max(size, Vector3.Distance(bone.position, head.position));
+            }
+
+            return size < 0.08f || size > 0.6f ? 0f : size;
         }
 
         private bool OrderBySide(ref Vector3 a, ref Vector3 b)

@@ -84,7 +84,8 @@ namespace AshenWoods.UI
         private float lastNoticeCue = -100f;
         private float lastStingCue = -100f;
         private AudioSource tensionSource;
-        private AudioSource chaseSource;
+        private ChaseMusic chaseMusic;
+        private bool anyChaseNow;
 
         private void Awake()
         {
@@ -99,7 +100,7 @@ namespace AshenWoods.UI
             cueSource.bypassReverbZones = true; // in the head, not in the hall
 
             tensionSource = CreateLoop("TensionLoop", GameSound.TensionLoop, tensionVolume);
-            chaseSource = CreateLoop("ChaseLoop", GameSound.ChaseLoop, chaseVolume);
+            chaseMusic = chaseVolume > 0f ? new ChaseMusic(transform) : null;
 
             if (vignette != null)
             {
@@ -178,6 +179,7 @@ namespace AshenWoods.UI
             float speed = target > Danger ? 2.5f : (Suppressed ? 3f : 0.35f);
             Danger = Mathf.MoveTowards(Danger, target, speed * deltaTime);
             chaseBlend = Mathf.MoveTowards(chaseBlend, anyChase ? 1f : 0f, (anyChase ? 3f : (Suppressed ? 3f : 0.6f)) * deltaTime);
+            anyChaseNow = anyChase;
 
             SetVignette(Danger, chaseBlend);
             UpdateHeartbeat(deltaTime);
@@ -213,7 +215,7 @@ namespace AshenWoods.UI
             // Tension: silent below a little danger, full at the top, ducked under the chase loop.
             float tension = Mathf.InverseLerp(0.12f, 0.8f, Danger) * (1f - 0.7f * chaseBlend);
             FadeLayer(tensionSource, tension * tensionVolume, deltaTime, 0.5f);
-            FadeLayer(chaseSource, chaseBlend * chaseVolume, deltaTime, 1.2f);
+            chaseMusic?.Tick(chaseBlend, chaseVolume, anyChaseNow, deltaTime);
 
             if (AmbiencePlayer.Instance != null)
             {

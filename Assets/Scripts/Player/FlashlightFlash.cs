@@ -109,7 +109,7 @@ namespace AshenWoods.Player
 
             if (CooldownRemaining > 0f)
             {
-                Feedback($"{coolingMessage} ({Mathf.CeilToInt(CooldownRemaining)} с)");
+                Feedback($"{World.Loc.T(coolingMessage)} ({Mathf.CeilToInt(CooldownRemaining)} " + World.Loc.Pick("с)", "s)"));
                 return false;
             }
 

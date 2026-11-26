@@ -7,7 +7,9 @@ namespace AshenWoods.World
     /// </summary>
     public static class Difficulty
     {
-        public static readonly string[] Names = { "Лёгкая", "Обычная", "Сложная" };
+        public static string[] Names => Loc.English ? NamesEn : NamesRu;
+        private static readonly string[] NamesRu = { "Лёгкая", "Обычная", "Сложная" };
+        private static readonly string[] NamesEn = { "Easy", "Normal", "Hard" };
 
         /// <summary>0 Easy, 1 Normal, 2 Hard.</summary>
         public static int Level { get; set; } = 1;

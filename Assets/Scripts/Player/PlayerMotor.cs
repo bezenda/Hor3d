@@ -198,6 +198,7 @@ namespace AshenWoods.Player
         {
             _velocity = Vector3.zero;
             _verticalVelocity = 0f;
+            _shoveRemaining = 0f;
             _fallPeakY = float.NegativeInfinity;
             _strideProgress = 0f;
 
@@ -229,6 +230,24 @@ namespace AshenWoods.Player
             UpdateHorizontal(deltaTime);
             UpdateStamina(deltaTime);
             UpdateFootsteps(deltaTime);
+        }
+
+        private const float ShoveDeceleration = 5.5f;
+        private float _shoveRemaining;
+
+        /// <summary>
+        /// Throws the player along <paramref name="velocity"/> (m/s; y is a small hop), e.g. an electric shock flinging
+        /// them clear of a live pipe. The slide eases out over about a second whatever the input says.
+        /// </summary>
+        public void Shove(Vector3 velocity)
+        {
+            _velocity = new Vector3(velocity.x, 0f, velocity.z);
+            if (velocity.y > 0f)
+            {
+                _verticalVelocity = Mathf.Max(_verticalVelocity, velocity.y);
+            }
+
+            _shoveRemaining = new Vector2(velocity.x, velocity.z).magnitude / ShoveDeceleration;
         }
 
         /// <summary>Restores a full bar (respawn, restart).</summary>
@@ -459,6 +478,12 @@ namespace AshenWoods.Player
 
             Vector3 horizontal = new Vector3(_velocity.x, 0f, _velocity.z);
             float accelerationThisFrame = acceleration * (IsGrounded ? 1f : airControl);
+            if (_shoveRemaining > 0f)
+            {
+                // Thrown: slide out the shove instead of stopping dead on the spot.
+                _shoveRemaining -= deltaTime;
+                accelerationThisFrame = ShoveDeceleration;
+            }
             horizontal = Vector3.MoveTowards(horizontal, wishVelocity, accelerationThisFrame * deltaTime);
 
             _velocity = new Vector3(horizontal.x, _verticalVelocity, horizontal.z);

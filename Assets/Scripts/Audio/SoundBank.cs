@@ -88,7 +88,19 @@ namespace AshenWoods.Audio
         UiPaper,
 
         /// <summary>A code lock refusing a wrong code: a loud alarm the enemy comes to (Keypad).</summary>
-        KeypadAlarm
+        KeypadAlarm,
+
+        /// <summary>The catch scene's cut: bone crunch (CaughtCameraFall).</summary>
+        Crunch,
+
+        /// <summary>A single water drop; the tension director drips them somewhere close in the dark.</summary>
+        Drip,
+        /// <summary>A short electric crackle: the broken pipe's sparks (ShockHazard).</summary>
+        Spark,
+        /// <summary>A full electric shock: the player touched the live pipe (ShockHazard).</summary>
+        Shock,
+        /// <summary>Background music of the title screen, quiet, looped (MenuMusic).</summary>
+        MenuMusic
     }
 
     /// <summary>

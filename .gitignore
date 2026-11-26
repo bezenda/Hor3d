@@ -121,3 +121,13 @@ InitTestScene*.unity*
 # Unity crash-recovery scenes
 /[Aa]ssets/_Recovery/
 /[Aa]ssets/_Recovery.meta
+
+# Owner-supplied audio of unknown licence stays local (public repo), like the owner's models (2026-11-26):
+# title music, the enemy's voice takes and their processed versions, the parked/unused sounds.
+/Audio_Unused/
+/[Aa]ssets/Audio/Resources/Sounds/MenuMusic/
+/[Aa]ssets/Audio/Resources/Sounds/MenuMusic.meta
+/[Aa]ssets/Audio/Staging/EnemyVoice/
+/[Aa]ssets/Audio/Staging/EnemyVoice.meta
+/[Aa]ssets/Audio/Resources/Sounds/EnemyCaught/caught_stalker.wav*
+/[Aa]ssets/Audio/Resources/Sounds/EnemyFound/found_you.wav*

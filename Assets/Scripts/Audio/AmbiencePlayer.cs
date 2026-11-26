@@ -41,6 +41,9 @@ namespace AshenWoods.Audio
         /// <summary>0 = full ambience, 1 = almost silent. Set every frame by whoever needs the room.</summary>
         public float Duck { get; set; }
 
+        /// <summary>The tension director's hush before the enemy shows up (0..1); the stronger of this and Duck wins.</summary>
+        public float Hush { get; set; }
+
         private AudioSource bedA;
         private AudioSource bedB;
         private bool usingA;
@@ -104,7 +107,7 @@ namespace AshenWoods.Audio
                 return; // Paused.
             }
 
-            duckSmoothed = Mathf.MoveTowards(duckSmoothed, Mathf.Clamp01(Duck), deltaTime * 0.8f);
+            duckSmoothed = Mathf.MoveTowards(duckSmoothed, Mathf.Clamp01(Mathf.Max(Duck, Hush)), deltaTime * 0.8f);
             float level = bedVolume * (1f - 0.85f * duckSmoothed);
 
             UpdateBed(deltaTime, level);

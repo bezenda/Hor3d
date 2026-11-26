@@ -22,6 +22,7 @@ namespace AshenWoods.World
 
         public static string Apply(string text)
         {
+            text = Loc.T(text); // translate the original before the tokens are filled in
             if (string.IsNullOrEmpty(text) || text.IndexOf('{') < 0)
             {
                 return text;

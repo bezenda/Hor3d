@@ -233,7 +233,7 @@ namespace AshenWoods.GameManagement
             ObjectiveManager objectives = Object.FindAnyObjectByType<ObjectiveManager>();
             pauseSubtitle.text = objectives != null && objectives.HasSteps && !objectives.IsComplete
                 ? objectives.CurrentDescription
-                : "Переведи дух.";
+                : World.Loc.Pick("Переведи дух.", "Catch your breath.");
         }
 
         private static string LowerFirst(string text)
@@ -367,7 +367,10 @@ namespace AshenWoods.GameManagement
         private void Unfreeze()
         {
             frozen = false;
-            HudVisibility.Set(true);
+            if (gameObject.scene.isLoaded && gameObject.activeInHierarchy)
+            {
+                HudVisibility.Set(true); // not while the scene is being torn down (GameObject.Find asserts then)
+            }
             Time.timeScale = timeScaleBeforePause;
             AudioListener.pause = false;
 

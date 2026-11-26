@@ -322,12 +322,21 @@ namespace AshenWoods.Player
             outOfPlay = value;
         }
 
-        public void NotifyCaught(Vector3 enemyPosition)
+        /// <summary>The enemy that caught the player (null before a catch); the catch scene follows its face.</summary>
+        public Transform Catcher { get; private set; }
+
+        /// <summary>World position of the catcher's eyes at the moment of the catch.</summary>
+        public Vector3 CatcherEyes { get; private set; }
+
+        public void NotifyCaught(Vector3 enemyPosition, Transform catcher, Vector3 eyes)
         {
             if (IsOutOfPlay || DebugFlags.God)
             {
                 return;
             }
+
+            Catcher = catcher;
+            CatcherEyes = eyes;
 
             bool pulledOut = hiding != null && hiding.IsHidden;
             if (pulledOut)

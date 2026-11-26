@@ -146,7 +146,7 @@ namespace AshenWoods.Interaction
             }
 
             CountLog(actor);
-            AshenWoods.World.Journal.Add(name, AshenWoods.World.TextTokens.Apply(journalLine));
+            AshenWoods.World.Journal.Add(name, journalLine); // tokens + language applied when the journal is shown
 
             if (showMap)
             {
@@ -181,7 +181,7 @@ namespace AshenWoods.Interaction
             PlayerInteractor interactor = (actor as Component) != null ? ((Component)actor).GetComponent<PlayerInteractor>() : null;
             if (interactor != null)
             {
-                interactor.ShowFeedback($"Прочитано журналов: {AshenWoods.World.SideProgress.LogsRead} из {AshenWoods.World.SideProgress.LogsTotal}");
+                interactor.ShowFeedback(World.Loc.Pick($"Прочитано журналов: {AshenWoods.World.SideProgress.LogsRead} из {AshenWoods.World.SideProgress.LogsTotal}", $"Logs read: {AshenWoods.World.SideProgress.LogsRead} of {AshenWoods.World.SideProgress.LogsTotal}"));
             }
         }
 

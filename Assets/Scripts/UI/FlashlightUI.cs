@@ -87,7 +87,7 @@ namespace AshenWoods.UI
 
             if (label != null)
             {
-                label.text = $"Фонарь {Mathf.CeilToInt(flashlight.Charge * 100f)}%";
+                label.text = World.Loc.Pick($"Фонарь {Mathf.CeilToInt(flashlight.Charge * 100f)}%", $"Torch {Mathf.CeilToInt(flashlight.Charge * 100f)}%");
                 label.color = flashlight.IsLow ? lowColor : labelColor;
             }
         }

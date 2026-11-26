@@ -71,10 +71,10 @@ namespace AshenWoods.UI
             padDigit = 0;
             closeAt = -1f;
             openedFrame = Time.frameCount;
-            SetStatus("Введи код.", UiTheme.Muted);
+            SetStatus(World.Loc.Pick("Введи код.", "Enter the code."), UiTheme.Muted);
             hint.text = Gamepad.current != null
-                ? "Крестовина  выбрать цифру     A  ввести     X  стереть     B  отойти"
-                : "0-9  ввод     Backspace  стереть     Esc  отойти";
+                ? World.Loc.Pick("Крестовина  выбрать цифру     A  ввести     X  стереть     B  отойти", "D-pad  pick a digit     A  enter     X  erase     B  step away")
+                : World.Loc.Pick("0-9  ввод     Backspace  стереть     Esc  отойти", "0-9  type     Backspace  erase     Esc  step away");
             Redraw();
             canvas.enabled = true;
             UiSound.Confirm();
@@ -198,7 +198,7 @@ namespace AshenWoods.UI
             typed += (char)('0' + digit);
             padDigit = 0;
             UiSound.Step(1);
-            SetStatus("Введи код.", UiTheme.Muted);
+            SetStatus(World.Loc.Pick("Введи код.", "Enter the code."), UiTheme.Muted);
             Redraw();
         }
 
@@ -218,7 +218,7 @@ namespace AshenWoods.UI
         {
             if (keypad.IsLockedOut)
             {
-                SetStatus($"Панель заблокирована — ещё {Mathf.CeilToInt(keypad.LockoutRemaining)} с", UiTheme.Danger);
+                SetStatus(World.Loc.Pick($"Панель заблокирована — ещё {Mathf.CeilToInt(keypad.LockoutRemaining)} с", $"Panel locked — {Mathf.CeilToInt(keypad.LockoutRemaining)} s left"), UiTheme.Danger);
                 UiSound.Error();
                 return;
             }
@@ -226,14 +226,14 @@ namespace AshenWoods.UI
             string said = keypad.Submit(typed);
             if (keypad.IsOpen)
             {
-                SetStatus("Принято. Замок открыт.", UiTheme.Calm);
+                SetStatus(World.Loc.Pick("Принято. Замок открыт.", "Accepted. The lock is open."), UiTheme.Calm);
                 display.color = UiTheme.Calm;
                 UiSound.Confirm();
                 closeAt = Time.unscaledTime + 0.8f;
             }
             else
             {
-                SetStatus("Неверный код — сработала тревога! Уходи, оно слышало.", UiTheme.Danger);
+                SetStatus(World.Loc.Pick("Неверный код — сработала тревога! Уходи, оно слышало.", "Wrong code — the alarm went off! Get away, it heard."), UiTheme.Danger);
                 UiSound.Error();
                 typed = string.Empty;
                 Redraw();
@@ -311,7 +311,7 @@ namespace AshenWoods.UI
 
             Text title = UiTheme.MakeText("Title", rect, UiTheme.Medium, 18, UiTheme.Muted, TextAnchor.MiddleCenter);
             Place(title, new Vector2(0f, 122f), new Vector2(580f, 30f));
-            title.text = "Кодовый замок";
+            title.text = World.Loc.Pick("Кодовый замок", "Keypad lock");
 
             var screen = new GameObject("Screen", typeof(RectTransform), typeof(Image));
             var screenRect = (RectTransform)screen.transform;

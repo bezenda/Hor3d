@@ -211,7 +211,16 @@ namespace AshenWoods.Enemy
                 }
 
                 look.Bind(brain, navigation);
+
+                EnemyGrab grab = animator.GetComponent<EnemyGrab>();
+                if (grab == null)
+                {
+                    grab = animator.gameObject.AddComponent<EnemyGrab>();
+                }
+
+                grab.Bind(brain);
             }
+
             upperLayer = animator.GetLayerIndex(UpperLayerName);
             lastYaw = transform.eulerAngles.y;
 

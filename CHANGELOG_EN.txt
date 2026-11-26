@@ -1,0 +1,40 @@
+﻿Ashen Woods - changelog
+Versions follow Semantic Versioning 2.0.0 (semver.org): MAJOR.MINOR.PATCH.
+The game's original language is Russian. Earlier versions are listed in CHANGELOG_RU.txt (Russian only).
+
+== Unreleased ==
+
+== 0.2.0 - 2026-11-26 ==
+Highlights
+- English language. Pick RU or EN in the top right corner of the main menu, or in the settings.
+  The game's original language is Russian.
+- New main menu: a winter night, falling snow, an abandoned station and quiet music.
+- New enemy: a charred figure with glowing eyes and a horrible voice.
+- New capture scene. You'd rather not see it.
+- Between encounters it gets tense: footsteps overhead, scraping, flickering lights, dripping in the dark.
+- New chase music: louder when the enemy is close, fading out when it loses you.
+
+Hiding
+- In a locker or under a desk, hold Shift to stop breathing: the enemy can hear you breathe.
+- If the enemy is standing at the door, kick it open (E) and run.
+
+New in the game
+- The eye in the middle of the screen shows whether the enemy notices you. The bar under it shows how loud you are.
+- Notes look like real paper, and the journal (J) remembers everything important.
+- The laptop in the janitor's closet explains how to get out.
+- A wrong code on a keypad sets off an alarm.
+- You can drop a fuel can on the floor and pick it up again.
+- Careful with the pipe by the janitor's closet: it's live.
+- Hints the first time you meet a hiding place, the enemy, noise and the torch.
+- After a death, the game tells you what gave you away.
+- Settings in the main menu, quit to the main menu from the pause screen, "Continue" from your last save.
+
+Controls
+- Ctrl — crouch, LMB — throw, RMB — torch flash, J — journal.
+
+Fixed
+- The game no longer crashes on some graphics cards (for example the GTX 1650).
+- The valve room can now be reached.
+- The enemy no longer spins on the spot and gets through doorways.
+- Small mistakes in menus, hints and texts.
+

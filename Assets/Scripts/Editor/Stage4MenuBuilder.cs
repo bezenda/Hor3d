@@ -218,6 +218,7 @@ namespace AshenWoods.EditorTools
         /// <summary>Option rows: object name suffix and the label shown.</summary>
         internal static readonly string[,] SettingsRows =
         {
+            { "Language", "Язык" },
             { "Quality", "Качество графики" },
             { "FrameLimit", "Ограничение кадров" },
             { "VSync", "Синхронизация кадров" },

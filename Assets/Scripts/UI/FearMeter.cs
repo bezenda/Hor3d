@@ -308,7 +308,7 @@ namespace AshenWoods.UI
             label.color = UiTheme.Muted;
             label.alignment = TextAnchor.LowerLeft;
             label.raycastTarget = false;
-            label.text = "Страх — не стой рядом с ним долго";
+            label.text = World.Loc.Pick("Страх — не стой рядом с ним долго", "Fear — don't stay near it for long");
         }
 
         private void ShowBar(bool visible, float amount)

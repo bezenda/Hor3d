@@ -148,12 +148,12 @@ namespace AshenWoods.GameManagement
             if (opening)
             {
                 int seconds = Mathf.CeilToInt(exit.OpenRemaining);
-                label.text = $"Ворота поднимаются: {seconds / 60}:{seconds % 60:00}. Продержись.";
+                label.text = World.Loc.Pick($"Ворота поднимаются: {seconds / 60}:{seconds % 60:00}. Продержись.", $"The gate is rising: {seconds / 60}:{seconds % 60:00}. Hold on.");
                 barFill.anchorMax = new Vector2(1f - exit.OpenRemaining / exit.OpenDelaySeconds, 1f);
             }
             else
             {
-                label.text = "Ворота открыты. Беги!";
+                label.text = World.Loc.Pick("Ворота открыты. Беги!", "The gate is open. Run!");
                 barFill.anchorMax = Vector2.one;
                 float pulse = 0.75f + 0.25f * Mathf.Sin(Time.time * 4f);
                 label.color = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, pulse);

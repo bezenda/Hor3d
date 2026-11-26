@@ -81,10 +81,10 @@ namespace AshenWoods.Interaction
 
             if (holder != null && holder.IsHoldingThrowable)
             {
-                return "Руки заняты — сначала брось (ЛКМ)";
+                return World.Loc.Pick("Руки заняты — сначала брось (ЛКМ)", "Hands full — throw first (LMB)");
             }
 
-            return AshenWoods.UI.UiTheme.Capitalize(displayName) + " — взять";
+            return AshenWoods.UI.UiTheme.Capitalize(World.Loc.T(displayName)) + World.Loc.Pick(" — взять", " — take");
         }
 
         public string Interact(IInteractionActor actor)
@@ -93,12 +93,12 @@ namespace AshenWoods.Interaction
 
             if (holder == null)
             {
-                return "Нечем это нести.";
+                return World.Loc.Pick("Нечем это нести.", "Nothing to carry it with.");
             }
 
             if (holder.IsHoldingThrowable)
             {
-                return "Руки заняты. Сначала брось то, что держишь.";
+                return World.Loc.Pick("Руки заняты. Сначала брось то, что держишь.", "Your hands are full. Throw what you're holding first.");
             }
 
             if (!holder.TryHold(this))
@@ -108,7 +108,7 @@ namespace AshenWoods.Interaction
 
             NoiseSystem.Emit(transform.position, NoiseCategory.Item, pickupNoiseLoudness, this);
             GameLog.Info($"[Throwable] Picked up {displayName}.", this);
-            return "Подобрано: " + displayName + ". Зажми ЛКМ и отпусти, чтобы бросить.";
+            return World.Loc.Pick("Подобрано: ", "Picked up: ") + World.Loc.T(displayName) + World.Loc.Pick(". Зажми ЛКМ и отпусти, чтобы бросить.", ". Hold LMB and release to throw.");
         }
 
         private static IThrowableHolder FindHolder(IInteractionActor actor)

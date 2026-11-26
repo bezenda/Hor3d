@@ -7,6 +7,7 @@ namespace AshenWoods.Player
     /// <summary>
     /// Heavy breathing while the player is out of stamina (PlayerMotor.IsExhausted): it starts
     /// when the bar runs dry and fades out once sprinting is allowed again. Added by PlayerMotor.
+    /// Silent while hidden: the hiding HUD plays the breathing there.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class PlayerBreathing : MonoBehaviour
@@ -16,12 +17,14 @@ namespace AshenWoods.Player
         [SerializeField, Min(0.05f)] private float fadeOutSeconds = 1.5f;
 
         private PlayerMotor motor;
+        private PlayerHidingController hiding;
         private AudioSource source;
         private float level;
 
         private void Awake()
         {
             motor = GetComponent<PlayerMotor>();
+            hiding = GetComponent<PlayerHidingController>();
             source = gameObject.AddComponent<AudioSource>();
             source.playOnAwake = false;
             source.loop = true;
@@ -37,7 +40,8 @@ namespace AshenWoods.Player
                 return;
             }
 
-            bool panting = motor.IsExhausted;
+            // In a hiding place HidingHud owns the breathing (one voice): this loop on top of it was heard twice.
+            bool panting = motor.IsExhausted && (hiding == null || !hiding.IsHidden);
             if (panting && !source.isPlaying)
             {
                 source.clip = SoundBank.Get(GameSound.Panting);

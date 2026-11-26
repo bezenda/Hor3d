@@ -124,3 +124,13 @@ Owner bug pass (2026-11-13):
   Navigation no longer skips `TowerRect`. Kit door frames have a 2.45 m lintel that made `TryFloorNode` refuse every
   doorway - use `TryDoorwayNode` (office door too). Before placing a puzzle in a room, check a path into it exists
   (`EnemyNavigation.SetDestination` in Play mode) - the valve wall looked fine in screenshots taken from inside.
+
+Live pipe (2026-11-26, `FacilityBuilder.ShockPipe`, idempotent, no marker): the kit "Pipes 03" at `Janitor/Props/Pipes`
+crosses the aisle south of the janitor's closet at head height (z 20.3..24.3, y ~1.63, its far end inside shelf
+Row4A). Its mesh is `Art/Generated/Facility/Meshes/Pipe_NoClamps.asset` (largest connected piece of the kit mesh: the
+clamps are gone; the BreakerRoom copy keeps them). `LivePipe` child: disabled `BoxCollider` read as bounds,
+`SparkPoint` + `Wires` at the middle of the open stretch (z ~22.86), `ShockHazard` (World): idle spark bursts
+(`GameSound.Spark`, `M_Spark` additive), touching = `PlayerMotor.Shove` + input off 5 s (scaled time) + noise
+(Impact 0.75) + `GameSound.Shock`. Crouching passes under it. The stun look must never resemble the photoflash
+(owner): no white flash, no Ringing - black brownout stutter, convulsion tremor, camera drops 0.85 m and rolls 28 deg
+(offset over CameraFeel at order 950), twitches, slow Heartbeat, rise over the last 1.3 s.

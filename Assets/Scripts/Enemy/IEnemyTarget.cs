@@ -53,7 +53,8 @@ namespace AshenWoods.Enemy
 
         /// <summary>
         /// Called once when an enemy reaches the target. A hidden target is pulled out first.
+        /// <paramref name="catcher"/> and <paramref name="eyes"/> let the catch scene look the enemy in the face.
         /// </summary>
-        void NotifyCaught(Vector3 enemyPosition);
+        void NotifyCaught(Vector3 enemyPosition, Transform catcher, Vector3 eyes);
     }
 }

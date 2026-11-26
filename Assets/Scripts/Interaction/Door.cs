@@ -92,7 +92,7 @@ namespace AshenWoods.Interaction
         {
             if (isLocked)
             {
-                return HasKey(actor) ? openPrompt + " (отпереть)" : lockedPrompt;
+                return HasKey(actor) ? World.Loc.T(openPrompt) + World.Loc.Pick(" (отпереть)", " (unlock)") : lockedPrompt;
             }
 
             return State == DoorState.Open ? closePrompt : openPrompt;
@@ -283,6 +283,26 @@ namespace AshenWoods.Interaction
             GameLog.Info($"[Door] {name} opening.", this);
         }
 
+        private float swingScale = 1f;
+
+        /// <summary>
+        /// The tension director: an open door drifts shut by itself over <paramref name="seconds"/>. Silent for the
+        /// enemy (no noise event); the caller plays the creak. Refused while locked or not fully open.
+        /// </summary>
+        public bool DriftShut(float seconds)
+        {
+            if (isLocked || State != DoorState.Open || swingSeconds <= 0.01f)
+            {
+                return false;
+            }
+
+            swingScale = Mathf.Max(1f, seconds / swingSeconds);
+            targetProgress = 0f;
+            State = DoorState.Closing;
+            GameLog.Info($"[Door] {name} drifting shut.", this);
+            return true;
+        }
+
         private void BeginClose()
         {
             targetProgress = 0f;
@@ -312,7 +332,7 @@ namespace AshenWoods.Interaction
                 return;
             }
 
-            float step = swingSeconds <= 0.01f ? 1f : Time.deltaTime / swingSeconds;
+            float step = swingSeconds <= 0.01f ? 1f : Time.deltaTime / (swingSeconds * swingScale);
             progress = Mathf.MoveTowards(progress, targetProgress, step);
 
             // SmoothStep eases the swing so the placeholder panel does not snap into motion.
@@ -323,6 +343,7 @@ namespace AshenWoods.Interaction
                 bool isOpen = targetProgress > 0.5f;
                 hinge.localRotation = isOpen ? openRotation : closedRotation;
                 State = isOpen ? DoorState.Open : DoorState.Closed;
+                swingScale = 1f;
                 GameLog.Info($"[Door] {name} {(isOpen ? "open" : "closed")}.", this);
             }
         }

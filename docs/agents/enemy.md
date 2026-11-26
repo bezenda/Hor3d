@@ -57,3 +57,26 @@ Moved out of AGENTS.md on 2026-11-26. Read before touching EnemyAnimator/EnemyBr
   is off camera does not animate (`CullUpdateTransforms`), so frame the enemy with the main camera.
 - `EnemyAnimator` scales playback so feet keep pace (`walkClipSpeed`/`runClipSpeed`; the setup
   tool measures them, an in-place clip keeps the inspector value) and drives `Stunned`.
+
+Catch v2 + tension director (2026-11-26, spec `docs/specs/2026-11-26-catch-and-director-design.md`):
+- `CaughtCameraFall` is now the catch scene (2.5 s, timeline constants in code - the old serialized fall values are
+  unused): grab to the face (whip with overshoot from behind), hold with struggle + red vignette + heart, cut with
+  crunch (GameSound.Crunch + a low DeathHit), procedural blood splats on the lens, black, Ringing. Own overlay canvas at order 29
+  (under the flow canvas 30). Warm `CatchFaceLight` under the lens. `CatchesThisRun` (reset in CheckpointSystem.Clear):
+  from the 2nd catch any key skips. `GameFlowController` times the death screen from `catchScene.Duration/Elapsed`.
+- `IEnemyTarget.NotifyCaught(position, catcher, eyes)`; `EnemyBrain.FacePoint()` = Humanoid head + offset, else
+  FlashPoint. A run-ending catch keeps the enemy in `Caught` (it used to walk off after `caughtHoldSeconds` and drag
+  the camera's anchor along).
+- `EnemyGrab` (runtime, next to EnemyLookAt): IK hands to the player's neck/shoulders (under the view - at the head they
+  filled the frame), look-at the camera. EnemyLookAt is off while Caught.
+- `EnemyEyeGlow` fallback placement is clamped to the head size (the scene's spacing 0.19 / forward 0.17 were for the
+  old model and left the Y Bot's eyes beside its face).
+- `TensionDirector` (GameManagement, added by GameFlowController): Calm/BuildUp/Peak/Relief, events never emit a
+  NoiseSystem noise. Hooks it uses: `HousePower.Disturb` (+ `Lamps`), `Door.DriftShut`, `EnemyBrain.ProwlTowards` /
+  `RequestRetreat`, `AmbiencePlayer.Hush`, `LampSway`, drips (`GameSound.Drip`), `DirectorShade` (stripped copy of the enemy's `Visuals`). F8 in the
+  editor forces an event. Checking a catch in Play mode through MCP: the intro card holds timeScale 0, so pause +
+  `EditorApplication.Step()` and set `CaughtCameraFall.elapsed` by reflection, then `HudShot.Take`.
+- Chase music (2026-11-26): `UI/ChaseMusic` (owned by ThreatFeedback, replaces its single ChaseLoop source) plays each
+  `Sounds/ChaseLoop` variant as a whole stereo track (mp3, Streaming): new track per chase, resume within 6 s, crossfade
+  1.6 s before `UsableLength` (silent tails cut), low-pass 2.4k -> 22k and gain 0.78 -> 1.12 by `Threat.Closeness(16)`,
+  pitch sags to 0.86 while the chase fades. Per-track `TrackGain` evens RMS; a new track needs entries there.

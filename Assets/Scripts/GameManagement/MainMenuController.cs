@@ -73,6 +73,11 @@ namespace AshenWoods.GameManagement
 
         private void Awake()
         {
+            if (GetComponent<AshenWoods.Audio.MenuMusic>() == null)
+            {
+                gameObject.AddComponent<AshenWoods.Audio.MenuMusic>(); // quiet title music (owner, 2026-11-26)
+            }
+
             Time.timeScale = 1f;
             AudioListener.pause = false;
             Cursor.lockState = CursorLockMode.None;
@@ -108,13 +113,24 @@ namespace AshenWoods.GameManagement
                 }
             }
 
-            if (versionLabel != null)
-            {
-                versionLabel.text = "Версия " + Application.version;
-            }
+            ShowVersion();
+            World.Loc.Changed += ShowVersion;
 
             GameSettings.ApplyAll(); // Stored volume, quality and frame limit already on the title screen.
             nextDip = Random.Range(9f, 16f);
+        }
+
+        private void ShowVersion()
+        {
+            if (versionLabel != null)
+            {
+                versionLabel.text = World.Loc.Pick("Версия ", "Version ") + Application.version;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            World.Loc.Changed -= ShowVersion;
         }
 
         private static void Wire(Button button, UnityEngine.Events.UnityAction action)

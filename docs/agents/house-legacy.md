@@ -94,3 +94,12 @@ Moved out of AGENTS.md on 2026-11-26. The house (AshWoods_House.unity) and playg
   let routes run straight through a bed. House hiding spots stand against walls, centred on
   a grid line, so they sit between nav nodes; `HidingSpot.eyeHeight` lowers the camera while
   hidden and `PlayerHidingController` restores it on leaving.
+
+
+Title screen v3 (2026-11-26, `MenuSceneBuilder.Winter.cs`, chained from `BuildStation`): marker `Station_Winter_v1` ran the
+one-time fixes (door moved to x 7.5 off the pilaster, window frames/sills + unlit interiors `Tex_WindowDark/Blinds`,
+`Station_Ash` off, primitive barrels/pallets/crate off). Parts built once: `Station_Winter` (snow caps measured from
+the parts, drift meshes saved to `Assets/Art/Generated/Menu/Drift_*.asset`, tyre-track decals), `Station_Clutter`
+(Poly Haven CC0 models at real scale, grounded by bounds), `Station_Details` (signs, cameras, ladder, downpipes, cables),
+`Station_Snow` (two calm layers: owner found turbulent flakes "like midges" - keep noise ~0.1 at low frequency, slow scroll), `Station_VFX` (steam in its own unlit `Station_Steam` material - the lit fog puff read as dark blots at night; wall-box sparks). Delete a part to rebuild it. Surfaces:
+hall `precast_concrete_wall`, yard `asphalt_snow`, land `snow_02`.
