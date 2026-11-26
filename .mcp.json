@@ -9,6 +9,16 @@
         "--transport",
         "stdio"
       ]
+    },
+    "mixamo": {
+      "command": "C:/Users/Admin/AppData/Roaming/Python/Python312/Scripts/uvx.exe",
+      "args": [
+        "--with",
+        "mcp>=1.2,<2",
+        "--from",
+        "git+https://github.com/HaD0Yun/unity-mcp-mixamo@6170d5eca609eb5cdbbbd6b1a3fc6276362f6701#subdirectory=Server",
+        "mixamo-mcp"
+      ]
     }
   }
 }

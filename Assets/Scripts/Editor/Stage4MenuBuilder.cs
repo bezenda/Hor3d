@@ -54,7 +54,10 @@ namespace AshenWoods.EditorTools
             int added = EnsureStage4Pieces()
                         + Stage5NoiseBuilder.EnsureStage5Pieces()
                         + Stage6ObjectiveBuilder.EnsureStage6Pieces()
-                        + Stage7FlowBuilder.EnsureStage7Pieces();
+                        + Stage7FlowBuilder.EnsureStage7Pieces()
+                        + Stage8ThrowableBuilder.EnsureStage8Pieces()
+                        + Stage9PolishBuilder.EnsureStage9Pieces()
+                        + Stage10InterfaceBuilder.EnsureStage10Pieces();
 
             if (added > 0)
             {
@@ -112,6 +115,7 @@ namespace AshenWoods.EditorTools
             added += EnsureEventSystem(uiRoot.transform);
             added += EnsurePausePanel(canvasObject.transform);
             added += EnsureInventoryPanel(canvasObject.transform);
+            added += EnsureSettingsPanel(canvasObject.transform);
 
             // Wiring is refreshed on every run so a re-import or a moved object repairs itself.
             WireMenu(canvasObject);
@@ -146,7 +150,7 @@ namespace AshenWoods.EditorTools
                 // The panel may predate the buttons. Add only what is missing.
                 if (existing.Find(ResumeButtonName) == null)
                 {
-                    CreateButton(existing, ResumeButtonName, "Resume", new Vector2(0f, 40f), new Vector2(360f, 70f));
+                    CreateButton(existing, ResumeButtonName, "Вернуться в игру", new Vector2(0f, 40f), new Vector2(360f, 70f));
                     return 1;
                 }
 
@@ -155,13 +159,13 @@ namespace AshenWoods.EditorTools
 
             GameObject panel = CreateOverlay(canvas, PausePanelName);
 
-            CreateText(panel.transform, "Title", "PAUSED", new Vector2(0f, 210f), new Vector2(900f, 120f), 72, TextColor);
-            CreateText(panel.transform, "Subtitle", "The woods are holding their breath.",
+            CreateText(panel.transform, "Title", "ПАУЗА", new Vector2(0f, 210f), new Vector2(900f, 120f), 72, TextColor);
+            CreateText(panel.transform, "Subtitle", "Лес затаил дыхание.",
                 new Vector2(0f, 140f), new Vector2(900f, 50f), 28, DimTextColor);
 
-            CreateButton(panel.transform, ResumeButtonName, "Resume", new Vector2(0f, 40f), new Vector2(360f, 70f));
+            CreateButton(panel.transform, ResumeButtonName, "Вернуться в игру", new Vector2(0f, 40f), new Vector2(360f, 70f));
 
-            CreateText(panel.transform, "Hint", "Esc  -  Resume              Tab  -  Satchel",
+            CreateText(panel.transform, "Hint", "Esc — вернуться в игру              Tab — сумка",
                 new Vector2(0f, -70f), new Vector2(900f, 50f), 26, DimTextColor);
             CreateText(panel.transform, "Controls",
                 "WASD  move      Shift  sprint      C  crouch      E  use      F  flashlight      Mouse  look",
@@ -178,7 +182,7 @@ namespace AshenWoods.EditorTools
             {
                 if (existing.Find(CloseButtonName) == null)
                 {
-                    CreateButton(existing, CloseButtonName, "Close", new Vector2(0f, -170f), new Vector2(320f, 64f));
+                    CreateButton(existing, CloseButtonName, "Закрыть", new Vector2(0f, -170f), new Vector2(320f, 64f));
                     return 1;
                 }
 
@@ -187,14 +191,14 @@ namespace AshenWoods.EditorTools
 
             GameObject panel = CreateOverlay(canvas, InventoryPanelName);
 
-            CreateText(panel.transform, "Title", "SATCHEL", new Vector2(0f, 250f), new Vector2(900f, 90f), 56, TextColor);
-            CreateText(panel.transform, "Heading", "KEYS", new Vector2(0f, 170f), new Vector2(900f, 40f), 26, DimTextColor);
+            CreateText(panel.transform, "Title", "СУМКА", new Vector2(0f, 250f), new Vector2(900f, 90f), 56, TextColor);
+            CreateText(panel.transform, "Heading", "КЛЮЧИ", new Vector2(0f, 170f), new Vector2(900f, 40f), 26, DimTextColor);
             Text listText = CreateText(panel.transform, "KeyList", string.Empty,
                 new Vector2(0f, 10f), new Vector2(760f, 300f), 32, TextColor);
 
-            CreateButton(panel.transform, CloseButtonName, "Close", new Vector2(0f, -170f), new Vector2(320f, 64f));
+            CreateButton(panel.transform, CloseButtonName, "Закрыть", new Vector2(0f, -170f), new Vector2(320f, 64f));
 
-            CreateText(panel.transform, "Hint", "Tab  -  Close              Esc  -  Pause menu",
+            CreateText(panel.transform, "Hint", "Tab — закрыть              Esc — пауза",
                 new Vector2(0f, -250f), new Vector2(900f, 50f), 26, DimTextColor);
 
             InventoryUI inventory = panel.AddComponent<InventoryUI>();
@@ -204,6 +208,78 @@ namespace AshenWoods.EditorTools
 
             panel.SetActive(false);
             return 1;
+        }
+
+        private const string SettingsPanelName = "SettingsPanel";
+        private const string SettingsButtonName = "SettingsButton";
+        private const string BackButtonName = "BackButton";
+        private const string PauseQuitButtonName = "QuitButton";
+
+        /// <summary>Option rows: object name suffix and the label shown.</summary>
+        internal static readonly string[,] SettingsRows =
+        {
+            { "Quality", "Качество графики" },
+            { "FrameLimit", "Ограничение кадров" },
+            { "VSync", "Синхронизация кадров" },
+            { "Fov", "Угол обзора" },
+            { "Brightness", "Яркость" },
+            { "Sensitivity", "Чувствительность мыши" },
+            { "Volume", "Громкость" }
+        };
+
+        /// <summary>
+        /// The settings screen (opened from the pause screen) and the pause screen's Settings
+        /// button. Each option is a row: label, "‹" button, value, "›" button. Stage 10 lays
+        /// them out; SettingsMenu fills in the values and handles the clicks.
+        /// </summary>
+        private static int EnsureSettingsPanel(Transform canvas)
+        {
+            int added = 0;
+
+            Transform pause = canvas.Find(PausePanelName);
+            if (pause != null && pause.Find(SettingsButtonName) == null)
+            {
+                CreateButton(pause, SettingsButtonName, "Настройки", new Vector2(0f, -30f), new Vector2(360f, 70f));
+                added++;
+            }
+
+            if (pause != null && pause.Find(PauseQuitButtonName) == null)
+            {
+                CreateButton(pause, PauseQuitButtonName, "Выйти из игры", new Vector2(0f, -100f), new Vector2(360f, 70f));
+                added++;
+            }
+
+            Transform panel = canvas.Find(SettingsPanelName);
+            if (panel == null)
+            {
+                GameObject created = CreateOverlay(canvas, SettingsPanelName);
+                CreateText(created.transform, "Title", "Настройки", new Vector2(0f, 300f), new Vector2(900f, 90f), 56, TextColor);
+                CreateButton(created.transform, BackButtonName, "Назад", new Vector2(0f, -320f), new Vector2(320f, 64f));
+                CreateText(created.transform, "Hint", "Esc — назад", new Vector2(0f, -400f), new Vector2(900f, 50f), 26, DimTextColor);
+                created.AddComponent<SettingsMenu>();
+                created.SetActive(false);
+                panel = created.transform;
+                added++;
+            }
+
+            for (int i = 0; i < SettingsRows.GetLength(0); i++)
+            {
+                string rowName = "Row_" + SettingsRows[i, 0];
+                if (panel.Find(rowName) != null)
+                {
+                    continue;
+                }
+
+                var row = new GameObject(rowName, typeof(RectTransform));
+                row.transform.SetParent(panel, false);
+                CreateText(row.transform, "Label", SettingsRows[i, 1], Vector2.zero, new Vector2(400f, 44f), 22, TextColor);
+                CreateButton(row.transform, "Prev", "‹", Vector2.zero, new Vector2(44f, 44f));
+                CreateText(row.transform, "Value", string.Empty, Vector2.zero, new Vector2(200f, 44f), 22, TextColor);
+                CreateButton(row.transform, "Next", "›", Vector2.zero, new Vector2(44f, 44f));
+                added++;
+            }
+
+            return added;
         }
 
         private static void WireMenu(GameObject canvasObject)
@@ -227,6 +303,12 @@ namespace AshenWoods.EditorTools
                 FindButton(pausePanel, ResumeButtonName));
             Stage1PlaygroundBuilder.SetObjectReference(menu, "closeButton",
                 FindButton(inventoryPanel, CloseButtonName));
+
+            Transform settingsPanel = canvasObject.transform.Find(SettingsPanelName);
+            Stage1PlaygroundBuilder.SetObjectReference(menu, "settingsPanel", settingsPanel != null ? settingsPanel.gameObject : null);
+            Stage1PlaygroundBuilder.SetObjectReference(menu, "settingsButton", FindButton(pausePanel, SettingsButtonName));
+            Stage1PlaygroundBuilder.SetObjectReference(menu, "settingsBackButton", FindButton(settingsPanel, BackButtonName));
+            Stage1PlaygroundBuilder.SetObjectReference(menu, "quitButton", FindButton(pausePanel, PauseQuitButtonName));
 
             PlayerInputReader input = Object.FindAnyObjectByType<PlayerInputReader>();
             PlayerInteractor interactor = Object.FindAnyObjectByType<PlayerInteractor>();

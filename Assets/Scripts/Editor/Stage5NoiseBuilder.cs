@@ -72,7 +72,10 @@ namespace AshenWoods.EditorTools
             }
 
             int added = EnsureStage5Pieces() + Stage6ObjectiveBuilder.EnsureStage6Pieces()
-                        + Stage7FlowBuilder.EnsureStage7Pieces();
+                        + Stage7FlowBuilder.EnsureStage7Pieces()
+                        + Stage8ThrowableBuilder.EnsureStage8Pieces()
+                        + Stage9PolishBuilder.EnsureStage9Pieces()
+                        + Stage10InterfaceBuilder.EnsureStage10Pieces();
 
             if (added > 0)
             {
@@ -159,7 +162,7 @@ namespace AshenWoods.EditorTools
                 changed++;
             }
 
-            foreach (EnemyHearing ear in Object.FindObjectsByType<EnemyHearing>(FindObjectsSortMode.None))
+            foreach (EnemyHearing ear in Object.FindObjectsByType<EnemyHearing>())
             {
                 Stage1PlaygroundBuilder.SetFloat(ear, "hearingRange", HearingRangeMetres);
                 Stage1PlaygroundBuilder.SetFloat(ear, "minimumLoudness", HearingMinimumLoudness);
@@ -168,20 +171,20 @@ namespace AshenWoods.EditorTools
                 changed++;
             }
 
-            foreach (Door door in Object.FindObjectsByType<Door>(FindObjectsSortMode.None))
+            foreach (Door door in Object.FindObjectsByType<Door>())
             {
                 Stage1PlaygroundBuilder.SetFloat(door, "openNoiseLoudness", DoorLoudness);
                 changed++;
             }
 
-            foreach (KeyPickup key in Object.FindObjectsByType<KeyPickup>(FindObjectsSortMode.None))
+            foreach (KeyPickup key in Object.FindObjectsByType<KeyPickup>())
             {
                 Stage1PlaygroundBuilder.SetFloat(key, "pickupNoiseLoudness", KeyLoudness);
                 changed++;
             }
 
             foreach (PlayerHidingController hiding in
-                     Object.FindObjectsByType<PlayerHidingController>(FindObjectsSortMode.None))
+                     Object.FindObjectsByType<PlayerHidingController>())
             {
                 Stage1PlaygroundBuilder.SetFloat(hiding, "enterNoiseLoudness", HidingEnterLoudness);
                 Stage1PlaygroundBuilder.SetFloat(hiding, "leaveNoiseLoudness", HidingLeaveLoudness);
@@ -321,7 +324,7 @@ namespace AshenWoods.EditorTools
         /// </summary>
         private static int EnsureEnemyHearing()
         {
-            EnemyBrain[] brains = Object.FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None);
+            EnemyBrain[] brains = Object.FindObjectsByType<EnemyBrain>();
 
             if (brains.Length == 0)
             {

@@ -158,8 +158,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AshenWoods.Interaction.KeyPickup
   keyId: iron_key
-  displayName: iron key
+  displayName: "\u0436\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u043A\u043B\u044E\u0447"
+  heavy: 0
+  takenMessage: 
   visual: {fileID: 3085036419087475764}
   spinDegreesPerSecond: 45
   bobHeight: 0.04
   bobSpeed: 1.6
+  pickupNoiseLoudness: 0.31

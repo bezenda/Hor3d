@@ -78,7 +78,10 @@ namespace AshenWoods.EditorTools
                         + Stage4MenuBuilder.EnsureStage4Pieces()
                         + Stage5NoiseBuilder.EnsureStage5Pieces()
                         + EnsureStage6Pieces()
-                        + Stage7FlowBuilder.EnsureStage7Pieces();
+                        + Stage7FlowBuilder.EnsureStage7Pieces()
+                        + Stage8ThrowableBuilder.EnsureStage8Pieces()
+                        + Stage9PolishBuilder.EnsureStage9Pieces()
+                        + Stage10InterfaceBuilder.EnsureStage10Pieces();
 
             if (added > 0)
             {
@@ -278,26 +281,93 @@ namespace AshenWoods.EditorTools
             }
 
             list.arraySize = 5;
+            string[] words = HouseBuilder.IsHouseScene() ? HouseWording : PlaygroundWording;
 
-            SetStep(list, 0, "find_iron_key",
-                "Find the iron key. Crouch under the tunnel in the west corner.",
+            SetStep(list, 0, "find_iron_key", words[0],
                 ObjectiveCondition.CarryKey, IronKeyId, null, null, null);
 
-            SetStep(list, 1, "unlock_closet",
-                "Unlock the closet in the north-east corner.",
+            SetStep(list, 1, "unlock_closet", words[1],
                 ObjectiveCondition.DoorUnlocked, null, closet, null, null);
 
-            SetStep(list, 2, "find_crowbar",
-                "Take the crowbar from the closet.",
+            SetStep(list, 2, "find_crowbar", words[2],
                 ObjectiveCondition.CarryKey, CrowbarId, null, null, null);
 
-            SetStep(list, 3, "restore_breaker",
-                "Restore the breaker: turn all three switches on.",
+            SetStep(list, 3, "restore_breaker", words[3],
                 ObjectiveCondition.PuzzleSolved, null, null, breaker, null);
 
-            SetStep(list, 4, "escape",
-                "Pry open the front door and get out.",
+            SetStep(list, 4, "escape", words[4],
                 ObjectiveCondition.EscapeUsed, null, null, null, exit);
+        }
+
+        private static readonly string[] PlaygroundWording =
+        {
+            "Find the iron key. Crouch under the tunnel in the west corner.",
+            "Unlock the closet in the north-east corner.",
+            "Take the crowbar from the closet.",
+            "Restore the breaker: turn all three switches on.",
+            "Pry open the front door and get out."
+        };
+
+        private static readonly string[] HouseWording =
+        {
+            "Find the iron key. It is under the low table in the living room - crouch (C) to reach it.",
+            "Unlock the pantry door in the kitchen.",
+            "Take the crowbar from the pantry.",
+            "Restore the power: the breaker is in the storeroom upstairs. Turn all three switches on.",
+            "Pry open the front door in the foyer and get out."
+        };
+
+        /// <summary>Earlier default house texts, replaced by the current ones (index = step).</summary>
+        private static readonly string[] RetiredHouseWording =
+        {
+            null,
+            null,
+            null,
+            "Restore the power: the breaker is upstairs in the study. Turn all three switches on.",
+            null
+        };
+
+        /// <summary>
+        /// The house layout moved the closet into the kitchen and the breaker upstairs. Steps that
+        /// still carry the playground's default wording get the house wording; any text that was
+        /// edited by hand is left exactly as it is.
+        /// </summary>
+        internal static void RefreshHouseWording()
+        {
+            ObjectiveManager manager = Object.FindAnyObjectByType<ObjectiveManager>();
+            if (manager == null || !HouseBuilder.IsHouseScene())
+            {
+                return;
+            }
+
+            var serialized = new SerializedObject(manager);
+            SerializedProperty list = serialized.FindProperty("steps");
+            if (list == null)
+            {
+                return;
+            }
+
+            bool changed = false;
+            for (int i = 0; i < list.arraySize; i++)
+            {
+                SerializedProperty description = list.GetArrayElementAtIndex(i).FindPropertyRelative("description");
+                int known = System.Array.IndexOf(PlaygroundWording, description.stringValue);
+                if (known < 0)
+                {
+                    known = System.Array.IndexOf(RetiredHouseWording, description.stringValue);
+                }
+
+                if (known >= 0)
+                {
+                    description.stringValue = HouseWording[known];
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
 
         /// <summary>Fills a step's target back in when it is empty, without touching its text.</summary>

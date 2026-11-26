@@ -17,7 +17,17 @@ namespace AshenWoods.Interaction
         [SerializeField] private string keyId = "iron_key";
 
         [Tooltip("Name shown in the prompt and in the pickup message.")]
-        [SerializeField] private string displayName = "iron key";
+        [SerializeField] private string displayName = "железный ключ";
+
+        [Tooltip("Heavy items (fuel cans) stop the player sprinting and slow the walk while carried.")]
+        [SerializeField] private bool heavy;
+
+        [Tooltip("Message on pickup; empty = 'Picked up the <name>.'")]
+        [SerializeField] private string takenMessage = "";
+
+        public string KeyId => keyId;
+        public string DisplayName => displayName;
+        public bool IsHeavy => heavy;
 
         [Header("Visual (optional)")]
         [Tooltip("Child that moves. Leave empty to keep the key perfectly still.")]
@@ -58,7 +68,7 @@ namespace AshenWoods.Interaction
 
         public string GetPrompt(IInteractionActor actor)
         {
-            return "Take " + displayName;
+            return AshenWoods.UI.UiTheme.Capitalize(displayName) + " — взять";
         }
 
         public string Interact(IInteractionActor actor)
@@ -69,11 +79,28 @@ namespace AshenWoods.Interaction
             }
 
             actor.GiveKey(keyId);
+            Component user = actor as Component;
+            AshenWoods.Player.PlayerKeyHolder holder = user != null ? user.GetComponentInParent<AshenWoods.Player.PlayerKeyHolder>() : null;
+            if (heavy && holder != null)
+            {
+                holder.MarkHeavy(keyId);
+            }
+
             NoiseSystem.Emit(transform.position, NoiseCategory.Item, pickupNoiseLoudness, this);
             GameLog.Info($"[KeyPickup] Took '{keyId}' ({displayName}) at {transform.position}.", this);
-            Destroy(gameObject);
+            AshenWoods.World.PickupLedger.Take(gameObject, keyId, heavy);
 
-            return "Picked up the " + displayName + ".";
+            string message = string.IsNullOrEmpty(takenMessage) ? "Подобрано: " + displayName + "." : takenMessage;
+            if (heavy && holder != null)
+            {
+                // A heavy item is carried, not destroyed: X puts it down again where the player stands.
+                HeavyCarry.On(holder.gameObject).Carry(this);
+                gameObject.SetActive(false);
+                return message + "\nЛКМ — бросить на пол.";
+            }
+
+            Destroy(gameObject);
+            return message;
         }
     }
 }

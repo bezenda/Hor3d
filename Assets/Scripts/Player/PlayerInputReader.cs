@@ -38,6 +38,23 @@ namespace AshenWoods.Player
         /// <summary>True on the frame the flashlight button (F, or the gamepad's north button) went down.</summary>
         public bool FlashlightPressed { get; private set; }
 
+        /// <summary>Throw button (right mouse, G, gamepad right shoulder) is down. Holding charges the throw.</summary>
+        public bool ThrowHeld { get; private set; }
+
+        /// <summary>True on the frame the throw button went up.</summary>
+        public bool ThrowReleased { get; private set; }
+
+        /// <summary>True on the frame the throw button went down.</summary>
+        public bool ThrowPressed { get; private set; }
+
+        /// <summary>True on the frame the flash button (Q, gamepad left shoulder) went down.</summary>
+        public bool FlashBurstPressed { get; private set; }
+
+        /// <summary>True on the frame the drop button (X, gamepad d-pad down) went down: puts a heavy item down.</summary>
+        public bool DropPressed { get; private set; }
+
+        private bool throwWasHeld;
+
         /// <summary>
         /// When false the reader reports no intent at all. Game state (pause, caught,
         /// completed) will drive this in later stages instead of every system checking
@@ -93,10 +110,18 @@ namespace AshenWoods.Player
             JumpPressed = false;
             InteractPressed = false;
             FlashlightPressed = false;
+            FlashBurstPressed = false;
+            DropPressed = false;
+            ThrowHeld = false;
 
             ReadKeyboard(Keyboard.current);
             ReadGamepad(Gamepad.current);
             ReadLook(Gamepad.current, Mouse.current);
+
+            // Released is derived from Held so every device behaves the same way.
+            ThrowReleased = throwWasHeld && !ThrowHeld;
+            ThrowPressed = ThrowHeld && !throwWasHeld;
+            throwWasHeld = ThrowHeld;
         }
 
         private void ReadKeyboard(Keyboard keyboard)
@@ -116,8 +141,10 @@ namespace AshenWoods.Player
             Move += new Vector2(strafe, forward);
 
             SprintHeld |= keyboard.leftShiftKey.isPressed;
-            CrouchHeld |= keyboard.cKey.isPressed;
-            CrouchPressed |= keyboard.cKey.wasPressedThisFrame;
+            // Fewer keys (owner, 2026-11-25): Ctrl crouches while held; G / X / Q / C are gone - the mouse buttons
+            // do the throwing, putting down and the flash.
+            CrouchHeld |= keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
+            CrouchPressed |= keyboard.leftCtrlKey.wasPressedThisFrame || keyboard.rightCtrlKey.wasPressedThisFrame;
             JumpPressed |= keyboard.spaceKey.wasPressedThisFrame;
             InteractPressed |= keyboard.eKey.wasPressedThisFrame;
             FlashlightPressed |= keyboard.fKey.wasPressedThisFrame;
@@ -142,6 +169,9 @@ namespace AshenWoods.Player
             JumpPressed |= gamepad.buttonSouth.wasPressedThisFrame;
             InteractPressed |= gamepad.buttonWest.wasPressedThisFrame;
             FlashlightPressed |= gamepad.buttonNorth.wasPressedThisFrame;
+            ThrowHeld |= gamepad.rightShoulder.isPressed;
+            FlashBurstPressed |= gamepad.leftShoulder.wasPressedThisFrame;
+            DropPressed |= gamepad.dpad.down.wasPressedThisFrame;
         }
 
         private void ReadLook(Gamepad gamepad, Mouse mouse)
@@ -151,7 +181,11 @@ namespace AshenWoods.Player
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
             {
                 Look += mouse.delta.ReadValue();
-                InteractPressed |= mouse.leftButton.wasPressedThisFrame;
+                // Left button = whatever is in the hands: hold and release to throw a bottle, press to put a heavy
+                // can down (HeavyCarry ignores it while a throwable is held). Right button = the torch flash.
+                ThrowHeld |= mouse.leftButton.isPressed;
+                DropPressed |= mouse.leftButton.wasPressedThisFrame;
+                FlashBurstPressed |= mouse.rightButton.wasPressedThisFrame;
             }
 
             if (gamepad != null)
@@ -176,6 +210,12 @@ namespace AshenWoods.Player
             JumpPressed = false;
             InteractPressed = false;
             FlashlightPressed = false;
+            ThrowHeld = false;
+            ThrowReleased = false;
+            ThrowPressed = false;
+            FlashBurstPressed = false;
+            DropPressed = false;
+            throwWasHeld = false; // A button held through a pause must not throw on resume.
         }
     }
 }

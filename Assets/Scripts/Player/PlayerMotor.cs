@@ -36,6 +36,22 @@ namespace AshenWoods.Player
         [SerializeField, Min(0f)] private float sprintSpeed = 4.3f;
         [SerializeField, Min(0f)] private float crouchSpeed = 1.05f;
 
+        [Header("Stamina")]
+        [Tooltip("Seconds of sprinting a full stamina bar allows.")]
+        [SerializeField, Min(0.5f)] private float sprintSeconds = 5f;
+
+        [Tooltip("Seconds to refill an empty bar while not sprinting.")]
+        [SerializeField, Min(0.5f)] private float staminaRefillSeconds = 7f;
+
+        [Tooltip("Pause after sprinting before stamina starts to refill.")]
+        [SerializeField, Min(0f)] private float staminaRefillDelay = 0.8f;
+
+        [Tooltip("After running dry, sprinting is refused until stamina is back to this fraction.")]
+        [SerializeField, Range(0f, 1f)] private float exhaustedRecoverFraction = 0.35f;
+
+        [Tooltip("Share of the stamina bar one jump costs. No jump while exhausted.")]
+        [SerializeField, Range(0f, 1f)] private float jumpStaminaCost = 0.2f;
+
         [Tooltip("How quickly the player reaches target speed, in m/s².")]
         [SerializeField, Range(1f, 40f)] private float acceleration = 16f;
 
@@ -55,7 +71,7 @@ namespace AshenWoods.Player
         [SerializeField, Range(5f, 60f)] private float terminalFallSpeed = 30f;
 
         [Header("Stance")]
-        [SerializeField] private CrouchMode crouchMode = CrouchMode.Toggle;
+        [SerializeField] private CrouchMode crouchMode = CrouchMode.Hold; // Ctrl held (owner, 2026-11-25)
         [SerializeField, Min(0.5f)] private float standHeight = 1.8f;
         [SerializeField, Min(0.3f)] private float crouchHeight = 0.95f;
         [SerializeField, Min(0.2f)] private float standEyeHeight = 1.62f;
@@ -75,6 +91,14 @@ namespace AshenWoods.Player
         [SerializeField, Min(0.2f)] private float walkStride = 2.1f;
         [SerializeField, Min(0.2f)] private float sprintStride = 2.8f;
         [SerializeField, Min(0.2f)] private float crouchStride = 1.5f;
+
+        [Header("Fall damage")]
+        [Tooltip("A fall from this height (metres, peak to landing) or more breaks the legs. A jump is 1.1 m.")]
+        [SerializeField, Min(0.5f)] private float legBreakFallHeight = 2.6f;
+        [Tooltip("Seconds the legs stay broken. The last quarter heals gradually.")]
+        [SerializeField, Min(0f)] private float legInjurySeconds = 30f;
+        [Tooltip("Speed kept while the legs are broken (0.3 = 70 % slower). No sprint or jump.")]
+        [SerializeField, Range(0.05f, 1f)] private float injuredSpeedFactor = 0.3f;
 
         [Tooltip("Minimum impact speed (m/s) that counts as a landing instead of ordinary footing.")]
         [SerializeField, Min(0f)] private float minLandingImpactSpeed = 2.5f;
@@ -97,21 +121,45 @@ namespace AshenWoods.Player
         /// <summary>Raised on touchdown with the downward speed at impact (positive m/s).</summary>
         public event Action<float> Landed;
 
+        /// <summary>Raised when a fall breaks the legs (the drop in metres).</summary>
+        public event Action<float> LegsBroken;
+
+        /// <summary>0 = healthy, 1 = legs freshly broken. Fades out over the last quarter.</summary>
+        public float LegInjury => legInjurySeconds <= 0f ? 0f
+            : Mathf.Clamp01(_injuryRemaining / (legInjurySeconds * 0.25f));
+
+        public bool HasBrokenLegs => _injuryRemaining > 0f;
+
         public bool IsCrouching { get; private set; }
         public bool IsGrounded { get; private set; }
         public PlayerGait CurrentGait { get; private set; } = PlayerGait.Walking;
         public float CurrentSpeed => new Vector3(_velocity.x, 0f, _velocity.z).magnitude;
+
+        /// <summary>Sprint stamina, 0..1.</summary>
+        public float Stamina { get; private set; } = 1f;
+
+        /// <summary>True after the bar ran dry, until it refills to the recover fraction.</summary>
+        public bool IsExhausted { get; private set; }
+
+        private float _staminaRefillWait;
 
         private Vector3 _velocity;
         private float _verticalVelocity;
         private bool _crouchToggled;
         private float _strideProgress;
         private bool _wasGrounded;
+        private float _fallPeakY = float.NegativeInfinity;
+        private float _injuryRemaining;
         private int _effectiveObstructionMask;
         private int _playerLayer = -1;
 
         private void Awake()
         {
+            if (GetComponent<PlayerBreathing>() == null)
+            {
+                gameObject.AddComponent<PlayerBreathing>();
+            }
+
             if (controller == null)
             {
                 controller = GetComponent<CharacterController>();
@@ -143,10 +191,14 @@ namespace AshenWoods.Player
         /// Velocity and step progress are cleared, so the player does not keep sliding or
         /// fire a footstep the moment they arrive.
         /// </summary>
+        /// <summary>The transform the camera hangs from. Its local y is the eye height.</summary>
+        public Transform CameraRoot => cameraRoot;
+
         public void Teleport(Vector3 position, Quaternion rotation)
         {
             _velocity = Vector3.zero;
             _verticalVelocity = 0f;
+            _fallPeakY = float.NegativeInfinity;
             _strideProgress = 0f;
 
             if (controller == null)
@@ -171,10 +223,76 @@ namespace AshenWoods.Player
 
             float deltaTime = Time.deltaTime;
 
+            _injuryRemaining = Mathf.Max(0f, _injuryRemaining - deltaTime);
             UpdateStance(deltaTime);
             UpdateVerticalAndJump(deltaTime);
             UpdateHorizontal(deltaTime);
+            UpdateStamina(deltaTime);
             UpdateFootsteps(deltaTime);
+        }
+
+        /// <summary>Restores a full bar (respawn, restart).</summary>
+        public void RefillStamina()
+        {
+            Stamina = 1f;
+            IsExhausted = false;
+            _injuryRemaining = 0f;
+            _staminaRefillWait = 0f;
+        }
+
+        /// <summary>
+        /// Spends stamina from outside the motor (holding one's breath in a hiding place, while the motor is off).
+        /// Running dry exhausts the player exactly like sprinting does.
+        /// </summary>
+        public void DrainStamina(float amount)
+        {
+            Stamina = Mathf.Max(0f, Stamina - amount);
+            _staminaRefillWait = staminaRefillDelay;
+            if (Stamina <= 0f)
+            {
+                IsExhausted = true;
+            }
+        }
+
+        /// <summary>Gives stamina back from outside the motor (breathing in a hiding place while the motor is off).</summary>
+        public void RecoverStamina(float amount)
+        {
+            Stamina = Mathf.Min(1f, Stamina + amount);
+            if (IsExhausted && Stamina >= exhaustedRecoverFraction)
+            {
+                IsExhausted = false;
+            }
+        }
+
+        private bool CanSprint => input.SprintHeld && !IsCrouching && !IsExhausted && !HasBrokenLegs && !CarryingHeavy;
+
+        private void UpdateStamina(float deltaTime)
+        {
+            if (CurrentGait == PlayerGait.Sprinting)
+            {
+                Stamina = Mathf.Max(0f, Stamina - deltaTime / sprintSeconds);
+                _staminaRefillWait = staminaRefillDelay;
+                if (Stamina <= 0f)
+                {
+                    IsExhausted = true;
+                }
+
+                return;
+            }
+
+            if (_staminaRefillWait > 0f)
+            {
+                _staminaRefillWait -= deltaTime;
+                return;
+            }
+
+            // Standing still refills faster than walking.
+            float rate = CurrentSpeed < 0.25f ? 1.5f : 1f;
+            Stamina = Mathf.Min(1f, Stamina + rate * deltaTime / staminaRefillSeconds);
+            if (IsExhausted && Stamina >= exhaustedRecoverFraction)
+            {
+                IsExhausted = false;
+            }
         }
 
         private void UpdateStance(float deltaTime)
@@ -276,6 +394,26 @@ namespace AshenWoods.Player
             float incomingFallSpeed = Mathf.Abs(_verticalVelocity);
             IsGrounded = controller.isGrounded;
 
+            if (!IsGrounded)
+            {
+                _fallPeakY = Mathf.Max(_fallPeakY, transform.position.y);
+            }
+            else if (!_wasGrounded)
+            {
+                float drop = _fallPeakY - transform.position.y;
+                _fallPeakY = float.NegativeInfinity;
+                if (drop >= legBreakFallHeight)
+                {
+                    _injuryRemaining = legInjurySeconds;
+                    LegsBroken?.Invoke(drop);
+                    GameLog.Info($"Fell {drop:0.0} m: legs broken for {legInjurySeconds:0} s.");
+                }
+            }
+            else
+            {
+                _fallPeakY = float.NegativeInfinity;
+            }
+
             if (!_wasGrounded && IsGrounded && incomingFallSpeed > minLandingImpactSpeed)
             {
                 Landed?.Invoke(incomingFallSpeed);
@@ -289,8 +427,15 @@ namespace AshenWoods.Player
                 _verticalVelocity = -groundStickSpeed;
             }
 
-            if (allowJump && input.JumpPressed && IsGrounded && !IsCrouching)
+            if (allowJump && input.JumpPressed && IsGrounded && !IsCrouching && !HasBrokenLegs && !IsExhausted)
             {
+                Stamina = Mathf.Max(0f, Stamina - jumpStaminaCost);
+                _staminaRefillWait = staminaRefillDelay;
+                if (Stamina <= 0f)
+                {
+                    IsExhausted = true;
+                }
+
                 float gravity = Mathf.Abs(Physics.gravity.y) * gravityMultiplier;
                 _verticalVelocity = Mathf.Sqrt(2f * gravity * Mathf.Max(0.01f, jumpHeight));
             }
@@ -324,12 +469,28 @@ namespace AshenWoods.Player
 
         private float GetTargetSpeed()
         {
-            if (IsCrouching)
-            {
-                return crouchSpeed;
-            }
+            float speed = IsCrouching ? crouchSpeed : CanSprint ? sprintSpeed : walkSpeed;
+            float heavyFactor = CarryingHeavy ? heavySpeedFactor : 1f;
+            return speed * heavyFactor * Mathf.Lerp(1f, injuredSpeedFactor, LegInjury);
+        }
 
-            return input.SprintHeld ? sprintSpeed : walkSpeed;
+        [Tooltip("Walk speed factor while carrying something heavy (a fuel can). No sprinting meanwhile.")]
+        [SerializeField, Range(0.3f, 1f)] private float heavySpeedFactor = 0.8f;
+
+        private PlayerKeyHolder heavyItems;
+
+        /// <summary>True while a heavy item is carried (PlayerKeyHolder.CarriesHeavy).</summary>
+        public bool CarryingHeavy
+        {
+            get
+            {
+                if (heavyItems == null)
+                {
+                    heavyItems = GetComponent<PlayerKeyHolder>();
+                }
+
+                return heavyItems != null && heavyItems.CarriesHeavy;
+            }
         }
 
         private PlayerGait ResolveGait(float horizontalSpeed)
@@ -339,7 +500,7 @@ namespace AshenWoods.Player
                 return PlayerGait.Crouching;
             }
 
-            if (input.SprintHeld && horizontalSpeed > walkSpeed * 1.05f)
+            if (CanSprint && horizontalSpeed > walkSpeed * 1.05f)
             {
                 return PlayerGait.Sprinting;
             }

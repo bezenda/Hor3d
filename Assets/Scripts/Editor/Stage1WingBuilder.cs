@@ -78,7 +78,10 @@ namespace AshenWoods.EditorTools
                         + Stage4MenuBuilder.EnsureStage4Pieces()
                         + Stage5NoiseBuilder.EnsureStage5Pieces()
                         + Stage6ObjectiveBuilder.EnsureStage6Pieces()
-                        + Stage7FlowBuilder.EnsureStage7Pieces();
+                        + Stage7FlowBuilder.EnsureStage7Pieces()
+                        + Stage8ThrowableBuilder.EnsureStage8Pieces()
+                        + Stage9PolishBuilder.EnsureStage9Pieces()
+                        + Stage10InterfaceBuilder.EnsureStage10Pieces();
 
             if (added > 0)
             {

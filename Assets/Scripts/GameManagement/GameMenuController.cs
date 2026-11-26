@@ -18,7 +18,10 @@ namespace AshenWoods.GameManagement
         Paused,
 
         /// <summary>Satchel screen.</summary>
-        Inventory
+        Inventory,
+
+        /// <summary>Settings, opened from the pause screen; Esc goes back to it.</summary>
+        Settings
     }
 
     /// <summary>
@@ -49,12 +52,30 @@ namespace AshenWoods.GameManagement
 
         [SerializeField] private InventoryUI inventory;
 
+        [Tooltip("Shown for the settings screen. Optional.")]
+        [SerializeField] private GameObject settingsPanel;
+
         [Header("Mouse")]
         [Tooltip("Clicked to close the pause screen. Optional - Esc does the same thing.")]
         [SerializeField] private Button resumeButton;
 
         [Tooltip("Clicked to close the satchel. Optional - Tab does the same thing.")]
         [SerializeField] private Button closeButton;
+
+        [Tooltip("On the pause screen: opens the settings.")]
+        [SerializeField] private Button settingsButton;
+
+        [Tooltip("On the settings screen: back to the pause screen.")]
+        [SerializeField] private Button settingsBackButton;
+
+        [Tooltip("On the pause screen: leaves the game (play mode in the editor).")]
+        [SerializeField] private Button quitButton;
+
+        [Tooltip("On the pause screen: back to the title screen (the checkpoint is kept for Continue).")]
+        [SerializeField] private Button mainMenuButton;
+
+        [Tooltip("Line under the pause title; shows what the player was doing.")]
+        [SerializeField] private Text pauseSubtitle;
 
         [Header("Player")]
         [SerializeField] private PlayerInputReader input;
@@ -104,8 +125,45 @@ namespace AshenWoods.GameManagement
 
             WireButton(resumeButton);
             WireButton(closeButton);
+            WireScreenButton(settingsButton, GameScreen.Settings);
+            WireScreenButton(settingsBackButton, GameScreen.Paused);
+
+            if (quitButton != null)
+            {
+                quitButton.onClick.RemoveAllListeners();
+                quitButton.onClick.AddListener(QuitGame);
+            }
+
+            if (mainMenuButton != null)
+            {
+                mainMenuButton.onClick.RemoveAllListeners();
+                mainMenuButton.onClick.AddListener(() => SceneFlow.LoadMainMenu(true));
+                mainMenuButton.gameObject.SetActive(SceneFlow.HasMainMenu);
+            }
 
             SetPanelsVisible(GameScreen.None);
+        }
+
+        private void QuitGame()
+        {
+            GameFlowController flow = Object.FindAnyObjectByType<GameFlowController>();
+            if (flow != null)
+            {
+                flow.Quit();
+                return;
+            }
+
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
+        private void Start()
+        {
+            // Saved options (quality, frame limit, FOV...) take effect at the start of every run.
+            GameSettings.ApplyAll();
         }
 
         private void OnDisable()
@@ -125,20 +183,68 @@ namespace AshenWoods.GameManagement
             // that reader reports nothing while a screen is open, so it could never notice
             // the key press that closes the screen again.
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null || IsLocked)
+            if (keyboard == null || IsLocked || AshenWoods.UI.NoteReader.BlocksMenu || AshenWoods.UI.KeypadUI.BlocksMenu)
             {
-                return;
+                return; // a note on screen owns Esc (it closes the note)
             }
 
             if (keyboard[pauseKey].wasPressedThisFrame)
             {
-                Toggle(GameScreen.Paused);
+                // Esc in the settings steps back to the pause screen instead of resuming.
+                if (CurrentScreen == GameScreen.Settings)
+                {
+                    UiSound.Back();
+                    Show(GameScreen.Paused);
+                }
+                else
+                {
+                    PlayToggleSound(GameScreen.Paused);
+                    Toggle(GameScreen.Paused);
+                }
             }
 
             if (keyboard[inventoryKey].wasPressedThisFrame)
             {
+                PlayToggleSound(GameScreen.Inventory);
                 Toggle(GameScreen.Inventory);
             }
+        }
+
+        private void PlayToggleSound(GameScreen screen)
+        {
+            if (CurrentScreen == screen)
+            {
+                UiSound.Back();
+            }
+            else
+            {
+                UiSound.Confirm();
+            }
+        }
+
+        /// <summary>What the pause screen says under its title: the current objective, so a player back from a break knows where they were.</summary>
+        private void RefreshPauseSubtitle()
+        {
+            if (pauseSubtitle == null)
+            {
+                return;
+            }
+
+            ObjectiveManager objectives = Object.FindAnyObjectByType<ObjectiveManager>();
+            pauseSubtitle.text = objectives != null && objectives.HasSteps && !objectives.IsComplete
+                ? objectives.CurrentDescription
+                : "Переведи дух.";
+        }
+
+        private static string LowerFirst(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text;
+            }
+
+            string trimmed = text.TrimEnd('.', ' ');
+            return char.ToLowerInvariant(trimmed[0]) + trimmed.Substring(1) + ".";
         }
 
         /// <summary>Closes any open screen and stops (or allows again) Esc and Tab.</summary>
@@ -199,6 +305,11 @@ namespace AshenWoods.GameManagement
                 inventory.Refresh();
             }
 
+            if (screen == GameScreen.Paused)
+            {
+                RefreshPauseSubtitle();
+            }
+
             // Selecting the button means Enter or Space also closes the screen, not just a click.
             SelectDefaultButton(screen);
 
@@ -250,11 +361,13 @@ namespace AshenWoods.GameManagement
             }
 
             PlayerInputReader.ApplyCursorLock(false);
+            HudVisibility.Set(false);
         }
 
         private void Unfreeze()
         {
             frozen = false;
+            HudVisibility.Set(true);
             Time.timeScale = timeScaleBeforePause;
             AudioListener.pause = false;
 
@@ -291,15 +404,38 @@ namespace AshenWoods.GameManagement
             button.onClick.AddListener(Close);
         }
 
+        private void WireScreenButton(Button button, GameScreen screen)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() => Show(screen));
+        }
+
         private void SelectDefaultButton(GameScreen screen)
         {
-            Button button = screen == GameScreen.Paused ? resumeButton : closeButton;
+            Button button = screen == GameScreen.Paused ? resumeButton
+                : screen == GameScreen.Settings ? settingsBackButton
+                : closeButton;
+            if (screen == GameScreen.Settings && settingsPanel != null)
+            {
+                SettingsMenu settingsMenu = settingsPanel.GetComponent<SettingsMenu>();
+                if (settingsMenu != null && settingsMenu.First != null)
+                {
+                    UiButtonFeel.SelectSilently(settingsMenu.First.gameObject);
+                    return;
+                }
+            }
+
             if (button == null || EventSystem.current == null)
             {
                 return;
             }
 
-            EventSystem.current.SetSelectedGameObject(button.gameObject);
+            UiButtonFeel.SelectSilently(button.gameObject);
         }
 
         private void ClearSelection()
@@ -320,6 +456,11 @@ namespace AshenWoods.GameManagement
             if (inventoryPanel != null)
             {
                 inventoryPanel.SetActive(screen == GameScreen.Inventory);
+            }
+
+            if (settingsPanel != null)
+            {
+                settingsPanel.SetActive(screen == GameScreen.Settings);
             }
         }
     }

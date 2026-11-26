@@ -1,0 +1,7 @@
+﻿Poly Haven assets - https://polyhaven.com
+License: CC0 1.0 Universal (public domain). No attribution required.
+https://polyhaven.com/license
+
+Downloaded 2026-11-08 at 1K resolution for the Ashen Woods house dressing
+(HouseBuilder.Dressing.cs). Models: Models/<asset id>/<asset id>.fbx with their textures/;
+surface textures: Textures/<asset id>/ (diffuse + OpenGL normal map).

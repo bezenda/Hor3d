@@ -11,9 +11,12 @@ namespace AshenWoods.Enemy
     ///
     ///   audible range = the smaller of this enemy's hearing range and the noise's own radius
     ///   a wall between the ear and the noise multiplies that range by Wall Attenuation
+    ///   a floor slab between them (the other storey) multiplies it by Floor Attenuation
     ///
-    /// So a crouching player two rooms away is never heard, a sprint behind one wall is
-    /// faint, and a slammed door next to the enemy is heard at once. When a noise gets
+    /// Distance is measured in 3D, so a player walking directly below the enemy is 3+ m away
+    /// and behind a floor, not "right here". A crouching player two rooms away is never heard,
+    /// a sprint behind one wall is faint, a sprint on the other storey carries only a little,
+    /// and a slammed door next to the enemy is heard at once. When a noise gets
     /// through, the brain is told to investigate - the ear never chases anything itself.
     /// </summary>
     [DisallowMultipleComponent]
@@ -43,6 +46,10 @@ namespace AshenWoods.Enemy
                  "1 means walls do not muffle anything.")]
         [SerializeField, Range(0.1f, 1f)] private float wallAttenuation = 0.75f;
 
+        [Tooltip("Range multiplier when the noise comes through a floor slab (the other storey). " +
+                 "0.4: walking below the enemy is not heard, sprinting below it is, faintly.")]
+        [SerializeField, Range(0.05f, 1f)] private float floorAttenuation = 0.4f;
+
         [Tooltip("Layers that count as a wall for that check.")]
         [SerializeField] private LayerMask obstructionMask = ~0;
 
@@ -55,7 +62,7 @@ namespace AshenWoods.Enemy
         [SerializeField] private bool logHeardNoises = true;
 
         /// <summary>Furthest this enemy can hear, in metres. Used by the gizmo and by tests.</summary>
-        public float HearingRange => hearingRange;
+        public float HearingRange => hearingRange * AshenWoods.World.Difficulty.EnemyHearing;
 
         private bool subscribed;
         private Vector3 lastHeardPoint;
@@ -144,27 +151,36 @@ namespace AshenWoods.Enemy
             }
 
             Vector3 earPosition = EarPosition;
-            Vector3 toNoise = noise.Position - earPosition;
-            toNoise.y = 0f;
-            float distance = toNoise.magnitude;
+
+            // Noises are reported at floor level; listen to a point just above it, so the
+            // floor the noise stands on is not mistaken for a wall in the way.
+            Vector3 noisePoint = noise.Position + Vector3.up * 0.3f;
+            float distance = Vector3.Distance(earPosition, noisePoint);
 
             if (distance < minimumDistance)
             {
                 return;
             }
 
-            float audibleRange = Mathf.Min(hearingRange, noise.Radius);
-            if (distance > audibleRange)
-            {
-                return;
-            }
+            float audibleRange = Mathf.Min(HearingRange, noise.Radius);
+            SoundPath path = SoundPath.Clear;
 
-            if (IsBlocked(earPosition, noise.Position))
+            // An echoing noise (a crash in a big hall) carries everywhere: no range, no walls.
+            if (!noise.Echoes)
             {
-                audibleRange *= wallAttenuation;
                 if (distance > audibleRange)
                 {
                     return;
+                }
+
+                path = Acoustics.PathBetween(earPosition, noisePoint, obstructionMask);
+                if (path != SoundPath.Clear)
+                {
+                    audibleRange *= path == SoundPath.Floor ? floorAttenuation : wallAttenuation;
+                    if (distance > audibleRange)
+                    {
+                        return;
+                    }
                 }
             }
 
@@ -178,12 +194,13 @@ namespace AshenWoods.Enemy
 
             if (logHeardNoises)
             {
-                GameLog.Info(
-                    $"[Hearing] Heard {noise.Category} from {distance:0.0} m away " +
-                    $"(audible range {audibleRange:0.0} m).", this);
+                GameLog.Info(noise.Echoes
+                    ? $"[Hearing] Heard {noise.Category} echo through the level from {distance:0.0} m away."
+                    : $"[Hearing] Heard {noise.Category} from {distance:0.0} m away through {path} " +
+                      $"(audible range {audibleRange:0.0} m).", this);
             }
 
-            brain.HearNoise(noise.Position, noise.Loudness, noise.Category);
+            brain.HearNoise(noise.Position, noise.Loudness, noise.Category, noise.Echoes);
         }
 
         private bool IsRepeatOfLastNoise(Vector3 position)
@@ -194,11 +211,6 @@ namespace AshenWoods.Enemy
             }
 
             return (position - lastHeardPoint).sqrMagnitude < 1f;
-        }
-
-        private bool IsBlocked(Vector3 from, Vector3 to)
-        {
-            return Physics.Linecast(from, to, obstructionMask, QueryTriggerInteraction.Ignore);
         }
 
         private void OnDrawGizmosSelected()

@@ -98,6 +98,11 @@ MonoBehaviour:
   walkSpeed: 2.2
   sprintSpeed: 4.3
   crouchSpeed: 1.05
+  sprintSeconds: 5
+  staminaRefillSeconds: 7
+  staminaRefillDelay: 0.8
+  exhaustedRecoverFraction: 0.35
+  jumpStaminaCost: 0.2
   acceleration: 16
   airControl: 0.35
   allowJump: 1
@@ -105,7 +110,7 @@ MonoBehaviour:
   gravityMultiplier: 2
   groundStickSpeed: 2
   terminalFallSpeed: 30
-  crouchMode: 0
+  crouchMode: 1
   standHeight: 1.8
   crouchHeight: 0.95
   standEyeHeight: 1.62
@@ -113,16 +118,20 @@ MonoBehaviour:
   stanceTransitionSpeed: 6
   obstructionMask:
     serializedVersion: 2
-    m_Bits: 4294967231
+    m_Bits: 55
   walkStride: 2.1
   sprintStride: 2.8
   crouchStride: 1.5
+  legBreakFallHeight: 2.6
+  legInjurySeconds: 30
+  injuredSpeedFactor: 0.3
   minLandingImpactSpeed: 2.5
   walkLoudness: 0.45
   sprintLoudness: 1
   crouchLoudness: 0.12
   landingLoudness: 0.8
   logFootstepEvents: 1
+  heavySpeedFactor: 0.8
 --- !u!114 &5453251361157056707
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -173,7 +182,8 @@ MonoBehaviour:
   reach: 2.2
   obstacleMask:
     serializedVersion: 2
-    m_Bits: 4294967231
+    m_Bits: 55
+  aimAssistRadius: 0.12
 --- !u!114 &1547062446767890301
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -190,6 +200,12 @@ MonoBehaviour:
   look: {fileID: 5453251361157056707}
   controller: {fileID: 6791755937416799009}
   interactor: {fileID: 4786313277367656463}
+  enterNoiseLoudness: 0.25
+  leaveNoiseLoudness: 0.19
+  holdSeconds: 7
+  recoverSeconds: 14
+  gaspLoudness: 0.5
+  input: {fileID: 0}
 --- !u!114 &6616045597851122794
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -208,9 +224,15 @@ MonoBehaviour:
   look: {fileID: 5453251361157056707}
   input: {fileID: 403902962502701820}
   interactor: {fileID: 4786313277367656463}
+  escapeExit: {fileID: 0}
   aimHeight: 1.5
+  flashlight: {fileID: 0}
+  darkVisibility: 1
+  crouchedDarkVisibility: 1
   caughtLockSeconds: 1.2
-  caughtMessage: Caught!
+  caughtMessage: "\u041E\u043D\u043E \u0442\u0435\u0431\u044F \u0441\u0445\u0432\u0430\u0442\u0438\u043B\u043E!"
+  doorBashCooldown: 20
+  doorBashLoudness: 0.8
 --- !u!1 &3418154680957393344
 GameObject:
   m_ObjectHideFlags: 0

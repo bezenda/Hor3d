@@ -131,7 +131,10 @@ namespace AshenWoods.EditorTools
                         + Stage4MenuBuilder.EnsureStage4Pieces()
                         + Stage5NoiseBuilder.EnsureStage5Pieces()
                         + Stage6ObjectiveBuilder.EnsureStage6Pieces()
-                        + Stage7FlowBuilder.EnsureStage7Pieces();
+                        + Stage7FlowBuilder.EnsureStage7Pieces()
+                        + Stage8ThrowableBuilder.EnsureStage8Pieces()
+                        + Stage9PolishBuilder.EnsureStage9Pieces()
+                        + Stage10InterfaceBuilder.EnsureStage10Pieces();
 
             if (added > 0)
             {
@@ -195,7 +198,7 @@ namespace AshenWoods.EditorTools
                 PrefabUtility.UnloadPrefabContents(contents);
             }
 
-            PlayerMotor[] players = Object.FindObjectsByType<PlayerMotor>(FindObjectsSortMode.None);
+            PlayerMotor[] players = Object.FindObjectsByType<PlayerMotor>();
             for (int i = 0; i < players.Length; i++)
             {
                 GameObject playerObject = players[i].gameObject;
@@ -539,6 +542,91 @@ namespace AshenWoods.EditorTools
             }
 
             return added;
+        }
+
+        // ------------------------------------------------- more hiding (house)
+
+        private const string BedHidingPrefabPath =
+            Stage1PlaygroundBuilder.PrefabFolder + "/World/HidingSpot_Bed.prefab";
+
+        private static Material HidingMaterial()
+        {
+            return Stage1PlaygroundBuilder.GetOrCreateMaterial(
+                "Placeholder_HidingSpot", new Color(0.30f, 0.22f, 0.15f));
+        }
+
+        /// <summary>The wardrobe prefab (created on first use).</summary>
+        internal static GameObject WardrobePrefab()
+        {
+            return EnsureHidingSpotPrefab(HidingMaterial());
+        }
+
+        /// <summary>
+        /// A bed to hide under: 1.0 x 1.9 m, head at local -z, 0.22 m of crawl space under a
+        /// mattress slab that reaches 0.55 m. The slab goes down to 0.22 m on purpose: the
+        /// enemy's lowest route probe (0.3 m) must hit it, or routes would run through beds.
+        /// The hidden player lies under it looking out of the foot end, eyes 0.12 m up.
+        /// </summary>
+        internal static GameObject BedPrefab()
+        {
+            GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(BedHidingPrefabPath);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            Stage1PlaygroundBuilder.EnsureFolder(Stage1PlaygroundBuilder.PrefabFolder, "World");
+            Material frame = HidingMaterial();
+            Material bedding = Stage1PlaygroundBuilder.GetOrCreateMaterial(
+                "Placeholder_Bedding", new Color(0.45f, 0.42f, 0.38f));
+
+            GameObject root = new GameObject("HidingSpot_Bed");
+            HidingSpot spot = root.AddComponent<HidingSpot>();
+            Transform visuals = new GameObject("Visuals").transform;
+            visuals.SetParent(root.transform, false);
+
+            Stage1PlaygroundBuilder.CreateBox("Mattress", visuals, new Vector3(0f, 0.385f, 0f),
+                new Vector3(1f, 0.33f, 1.9f), frame);
+            Stage1PlaygroundBuilder.CreateBox("Headboard", visuals, new Vector3(0f, 0.5f, -0.92f),
+                new Vector3(1f, 1f, 0.06f), frame);
+
+            GameObject blanket = Stage1PlaygroundBuilder.CreateBox("Blanket", visuals, new Vector3(0f, 0.57f, 0.15f),
+                new Vector3(0.96f, 0.04f, 1.5f), bedding);
+            Object.DestroyImmediate(blanket.GetComponent<Collider>());
+
+            foreach (Vector2 corner in new[] { new Vector2(-0.46f, -0.9f), new Vector2(0.46f, -0.9f),
+                                               new Vector2(-0.46f, 0.9f), new Vector2(0.46f, 0.9f) })
+            {
+                Stage1PlaygroundBuilder.CreateBox("Leg", visuals, new Vector3(corner.x, 0.11f, corner.y),
+                    new Vector3(0.06f, 0.22f, 0.06f), frame);
+            }
+
+            GameObject hidePoint = new GameObject("HidePoint");
+            hidePoint.transform.SetParent(root.transform, false);
+            hidePoint.transform.localPosition = new Vector3(0f, 0f, 0.1f);
+
+            var serialized = new SerializedObject(spot);
+            serialized.FindProperty("hidePoint").objectReferenceValue = hidePoint.transform;
+            serialized.FindProperty("eyeHeight").floatValue = 0.12f;
+            serialized.FindProperty("enterPrompt").stringValue = "Спрятаться под кроватью";
+            serialized.FindProperty("exitPrompt").stringValue = "Crawl out";
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, BedHidingPrefabPath);
+            Object.DestroyImmediate(root);
+            return prefab;
+        }
+
+        /// <summary>Places a hiding spot under the HidingSpots root once, by name.</summary>
+        internal static int PlaceHidingSpot(GameObject prefab, string name, Vector3 position, Quaternion rotation)
+        {
+            if (prefab == null)
+            {
+                return 0;
+            }
+
+            return EnsureHidingSpotInstance(prefab, GetOrCreateRoot(HidingSpotsRootName).transform, name,
+                position, rotation);
         }
 
         private static int EnsureHidingSpotInstance(

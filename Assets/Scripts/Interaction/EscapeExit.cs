@@ -36,10 +36,24 @@ namespace AshenWoods.Interaction
         [SerializeField] private PuzzleController powerSource;
 
         [Header("Text")]
-        [SerializeField] private string lockedPrompt = "Try the front door";
-        [SerializeField] private string lockedMessage = "The latch is dead. The house has no power.";
-        [SerializeField] private string openPrompt = "Pry the front door open";
-        [SerializeField] private string escapedMessage = "You force the door open and stumble out into the dark.";
+        [SerializeField] private string lockedPrompt = "Попробовать входную дверь";
+        [SerializeField] private string lockedMessage = "Замок мёртв. В доме нет электричества.";
+        [SerializeField] private string openPrompt = "Выломать входную дверь";
+        [SerializeField] private string escapedMessage = "Ты выламываешь дверь и вываливаешься в темноту.";
+
+        [Header("Slow gate (facility finale)")]
+        [Tooltip("Seconds the exit takes to open after it is used. 0 = it opens at once (the house).")]
+        [SerializeField, Min(0f)] private float openDelaySeconds;
+
+        [Tooltip("Rolling door that rises while the gate opens. Optional.")]
+        [SerializeField] private Transform rollingDoor;
+
+        [Tooltip("How far the rolling door rises, in metres.")]
+        [SerializeField] private float rollingDoorRise = 4.4f;
+
+        [SerializeField] private string openingPrompt = "Ворота поднимаются…";
+        [SerializeField] private string openingStartedMessage = "Ворота вздрагивают и со скрежетом ползут вверх. Это громко. Продержись.";
+        [SerializeField] private string gateReadyPrompt = "Бежать наружу";
 
         [Header("Noise")]
         [Tooltip("Loudness reported when the door finally gives way. 0 makes it silent.")]
@@ -48,11 +62,33 @@ namespace AshenWoods.Interaction
         /// <summary>Raised once, when the player gets out. Stage 7's completed screen listens.</summary>
         public event Action Escaped;
 
+        /// <summary>Raised once, when a slow gate starts to open (the finale begins).</summary>
+        public event Action OpeningStarted;
+
+        /// <summary>True while a slow gate is on its way up.</summary>
+        public bool IsOpening => openingStarted && openRemaining > 0f;
+
+        /// <summary>Seconds until a slow gate is open.</summary>
+        public float OpenRemaining => openRemaining;
+
+        public float OpenDelaySeconds => openDelaySeconds;
+
+        /// <summary>True from the moment a slow gate was set going (the finale is on).</summary>
+        public bool OpeningHasStarted => openingStarted;
+
         /// <summary>True once the door has been forced open.</summary>
         public bool HasEscaped { get; private set; }
 
         /// <summary>True when the breaker puzzle is solved, or when there is no lock at all.</summary>
-        public bool IsPowered => powerSource == null || powerSource.IsSolved;
+        public bool IsPowered => (powerSource == null || powerSource.IsSolved) && PressureReady;
+
+        [Tooltip("A second puzzle the gate needs (the hydraulic valves). Empty = power alone opens it.")]
+        [SerializeField] private PuzzleController extraRequirement;
+        [SerializeField] private string extraLockedPrompt = "Ворота (нет давления в гидравлике)";
+        [SerializeField] private string extraLockedMessage = "Мотор воет, но ворота не поднимаются. В гидравлике нет давления.";
+
+        private bool PressureReady => extraRequirement == null || extraRequirement.IsSolved;
+        private bool HasPower => powerSource == null || powerSource.IsSolved;
 
         /// <summary>An opened exit offers no prompt, so it cannot be used twice.</summary>
         public bool IsAvailable => !HasEscaped;
@@ -61,6 +97,9 @@ namespace AshenWoods.Interaction
         private Quaternion openRotation;
         private float progress;
         private Collider panelCollider;
+        private bool openingStarted;
+        private float openRemaining;
+        private Vector3 rollingDoorClosed;
 
         private void Awake()
         {
@@ -78,6 +117,11 @@ namespace AshenWoods.Interaction
             {
                 panelCollider = panel.GetComponent<Collider>();
             }
+
+            if (rollingDoor != null)
+            {
+                rollingDoorClosed = rollingDoor.position;
+            }
         }
 
         public string GetPrompt(IInteractionActor actor)
@@ -87,7 +131,17 @@ namespace AshenWoods.Interaction
                 return string.Empty;
             }
 
-            return IsPowered ? openPrompt : lockedPrompt;
+            if (!IsPowered)
+            {
+                return HasPower ? extraLockedPrompt : lockedPrompt;
+            }
+
+            if (openDelaySeconds > 0f && openingStarted)
+            {
+                return openRemaining > 0f ? openingPrompt : gateReadyPrompt;
+            }
+
+            return openPrompt;
         }
 
         public string Interact(IInteractionActor actor)
@@ -99,8 +153,26 @@ namespace AshenWoods.Interaction
 
             if (!IsPowered)
             {
-                GameLog.Info($"[Escape] {name} refused: the latch has no power.", this);
-                return lockedMessage;
+                GameLog.Info($"[Escape] {name} refused: {(HasPower ? "no pressure" : "no power")}.", this);
+                return HasPower ? extraLockedMessage : lockedMessage;
+            }
+
+            if (openDelaySeconds > 0f)
+            {
+                if (!openingStarted)
+                {
+                    openingStarted = true;
+                    openRemaining = openDelaySeconds;
+                    NoiseSystem.Emit(transform.position, NoiseCategory.Other, escapeNoiseLoudness, this);
+                    GameLog.Info($"[Escape] {name} started opening ({openDelaySeconds:0} s).", this);
+                    OpeningStarted?.Invoke();
+                    return openingStartedMessage;
+                }
+
+                if (openRemaining > 0f)
+                {
+                    return null; // still grinding up; the countdown is on screen
+                }
             }
 
             HasEscaped = true;
@@ -121,6 +193,21 @@ namespace AshenWoods.Interaction
 
         private void Update()
         {
+            if (openingStarted && openRemaining > 0f)
+            {
+                openRemaining = Mathf.Max(0f, openRemaining - Time.deltaTime);
+                if (rollingDoor != null)
+                {
+                    float t = 1f - openRemaining / openDelaySeconds;
+                    rollingDoor.position = rollingDoorClosed + Vector3.up * (rollingDoorRise * t);
+                }
+
+                if (openRemaining <= 0f)
+                {
+                    GameLog.Info($"[Escape] {name} is open. Run for it.", this);
+                }
+            }
+
             if (!HasEscaped || hinge == null)
             {
                 return;

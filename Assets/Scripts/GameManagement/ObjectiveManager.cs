@@ -22,7 +22,11 @@ namespace AshenWoods.GameManagement
         PuzzleSolved,
 
         /// <summary>The exit in <see cref="ObjectiveStep.exit"/> has been used.</summary>
-        EscapeUsed
+        EscapeUsed,
+
+        /// <summary>The player carries every key id in <see cref="ObjectiveStep.keyId"/> (comma separated);
+        /// the line shows how many so far, "(1/2)".</summary>
+        CarryKeys
     }
 
     /// <summary>
@@ -40,12 +44,12 @@ namespace AshenWoods.GameManagement
         public string id = "objective";
 
         [Tooltip("The line shown on screen while this is the current objective.")]
-        public string description = "Look around the house.";
+        public string description = "Осмотрись.";
 
         [Tooltip("What has to happen before the chain moves on.")]
         public ObjectiveCondition condition = ObjectiveCondition.Manual;
 
-        [Tooltip("CarryKey only: the key id the player must be holding.")]
+        [Tooltip("CarryKey: the key id the player must be holding. CarryKeys: several ids, comma separated.")]
         public string keyId = string.Empty;
 
         [Tooltip("DoorUnlocked only: the door that must be unlocked.")]
@@ -56,6 +60,9 @@ namespace AshenWoods.GameManagement
 
         [Tooltip("EscapeUsed only: the exit the player has to use.")]
         public EscapeExit exit;
+
+        [Tooltip("Said when the player has been stuck on this step for a while (JournalKey). Empty = no hint.")]
+        public string hint = string.Empty;
     }
 
     /// <summary>
@@ -84,7 +91,7 @@ namespace AshenWoods.GameManagement
 
         [Header("Text")]
         [Tooltip("Shown once every step is complete.")]
-        [SerializeField] private string allCompleteDescription = "You got out.";
+        [SerializeField] private string allCompleteDescription = "Ты на свободе.";
 
         [Header("Debug")]
         [Tooltip("Logs every objective that completes, so a test run can be read back afterwards.")]
@@ -127,7 +134,24 @@ namespace AshenWoods.GameManagement
                     return string.Empty;
                 }
 
-                return IsComplete ? allCompleteDescription : CurrentStep?.description ?? string.Empty;
+                if (IsComplete)
+                {
+                    return allCompleteDescription;
+                }
+
+                ObjectiveStep step = CurrentStep;
+                if (step == null)
+                {
+                    return string.Empty;
+                }
+
+                if (step.condition == ObjectiveCondition.CarryKeys)
+                {
+                    string[] ids = KeyIds(step);
+                    return $"{step.description} ({CountHeld(ids)}/{ids.Length})";
+                }
+
+                return step.description ?? string.Empty;
             }
         }
 
@@ -180,7 +204,49 @@ namespace AshenWoods.GameManagement
             if (IsStepSatisfied(step))
             {
                 CompleteCurrentStep();
+                return;
             }
+
+            // A count on the line ("1/2"): redraw it when it changes.
+            if (step.condition == ObjectiveCondition.CarryKeys)
+            {
+                int held = CountHeld(KeyIds(step));
+                if (held != shownCount)
+                {
+                    shownCount = held;
+                    ObjectiveChanged?.Invoke(step);
+                }
+            }
+        }
+
+        private int shownCount = -1;
+
+        private static string[] KeyIds(ObjectiveStep step)
+        {
+            var ids = new List<string>();
+            foreach (string part in (step.keyId ?? string.Empty).Split(','))
+            {
+                if (part.Trim().Length > 0)
+                {
+                    ids.Add(part.Trim());
+                }
+            }
+
+            return ids.ToArray();
+        }
+
+        private int CountHeld(string[] ids)
+        {
+            int held = 0;
+            foreach (string id in ids)
+            {
+                if (keyHolder != null && keyHolder.HasKey(id))
+                {
+                    held++;
+                }
+            }
+
+            return held;
         }
 
         /// <summary>
@@ -204,6 +270,10 @@ namespace AshenWoods.GameManagement
 
                 case ObjectiveCondition.EscapeUsed:
                     return step.exit != null && step.exit.HasEscaped;
+
+                case ObjectiveCondition.CarryKeys:
+                    string[] ids = KeyIds(step);
+                    return ids.Length > 0 && CountHeld(ids) == ids.Length;
 
                 default:
                     return false;
@@ -275,10 +345,76 @@ namespace AshenWoods.GameManagement
             ObjectiveChanged?.Invoke(CurrentStep);
         }
 
+        /// <summary>
+        /// Checkpoint restore: replays the effect of every step before <paramref name="index"/> quietly (keys back in
+        /// the pocket, doors unlocked, puzzles solved) and makes that step the current one.
+        /// </summary>
+        public void RestoreProgress(int index)
+        {
+            index = Mathf.Clamp(index, 0, steps.Count);
+            for (int i = 0; i < index; i++)
+            {
+                ApplyCompleted(steps[i]);
+            }
+
+            CurrentIndex = index;
+            if (logChanges)
+            {
+                GameLog.Info($"[Objectives] Restored to '{CurrentObjectiveId}' ({index}/{steps.Count}).", this);
+            }
+
+            ObjectiveChanged?.Invoke(CurrentStep);
+        }
+
+        private void ApplyCompleted(ObjectiveStep step)
+        {
+            if (step == null)
+            {
+                return;
+            }
+
+            switch (step.condition)
+            {
+                case ObjectiveCondition.CarryKey:
+                    if (keyHolder != null && !string.IsNullOrEmpty(step.keyId))
+                    {
+                        keyHolder.AddKey(step.keyId);
+                    }
+
+                    break;
+
+                case ObjectiveCondition.CarryKeys:
+                    // The ledger hands the items back (and marks them heavy); a later step may use them up.
+                    break;
+
+                case ObjectiveCondition.DoorUnlocked:
+                    if (step.door != null)
+                    {
+                        step.door.Unlock();
+                    }
+
+                    break;
+
+                case ObjectiveCondition.PuzzleSolved:
+                    if (step.puzzle != null)
+                    {
+                        step.puzzle.ForceSolve();
+                    }
+
+                    break;
+            }
+
+            StepRestored?.Invoke(step);
+        }
+
+        /// <summary>Raised for every step replayed by <see cref="RestoreProgress"/>, for steps other scripts own.</summary>
+        public event Action<ObjectiveStep> StepRestored;
+
         private void CompleteCurrentStep()
         {
             ObjectiveStep finished = CurrentStep;
             CurrentIndex++;
+            shownCount = -1;
 
             if (logChanges)
             {
@@ -320,6 +456,7 @@ namespace AshenWoods.GameManagement
                 switch (step.condition)
                 {
                     case ObjectiveCondition.CarryKey:
+                    case ObjectiveCondition.CarryKeys:
                         if (string.IsNullOrEmpty(step.keyId))
                         {
                             Debug.LogWarning(

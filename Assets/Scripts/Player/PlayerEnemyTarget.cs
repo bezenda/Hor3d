@@ -39,11 +39,21 @@ namespace AshenWoods.Player
         [Tooltip("Used only when no Aim Point is assigned.")]
         [SerializeField, Min(0.2f)] private float aimHeight = 1.5f;
 
+        [Header("Visibility")]
+        [Tooltip("Torch. While it is on the player is noticed at full speed. Found on the player when empty.")]
+        [SerializeField] private PlayerFlashlight flashlight;
+
+        [Tooltip("How quickly an enemy makes out a player walking with the torch off (1 = as fast as with it on).")]
+        [SerializeField, Range(0.1f, 1f)] private float darkVisibility = 1f;
+
+        [Tooltip("The same while crouching with the torch off.")]
+        [SerializeField, Range(0.1f, 1f)] private float crouchedDarkVisibility = 1f;
+
         [Header("Caught without a game flow (placeholder)")]
         [Tooltip("Seconds of lost control after being caught.")]
         [SerializeField, Min(0f)] private float caughtLockSeconds = 1.2f;
 
-        [SerializeField] private string caughtMessage = "Caught!";
+        [SerializeField] private string caughtMessage = "Оно тебя схватило!";
 
         /// <summary>Raised once per catch with the enemy's position.</summary>
         public event Action<Vector3> Caught;
@@ -61,19 +71,164 @@ namespace AshenWoods.Player
 
         public bool IsHiddenFromEnemy => hiding != null && hiding.IsHidden;
 
+        /// <summary>
+        /// A lit torch or a sprint gives the player away at once; walking in the dark is harder
+        /// to make out, crouching in the dark harder still.
+        /// </summary>
+        public bool IsLit => flashlight != null && flashlight.IsOn;
+
+        public float Visibility
+        {
+            get
+            {
+                if (flashlight != null && flashlight.IsOn)
+                {
+                    return 1f;
+                }
+
+                if (motor == null)
+                {
+                    return darkVisibility;
+                }
+
+                if (motor.CurrentGait == PlayerGait.Sprinting)
+                {
+                    return 1f;
+                }
+
+                return motor.IsCrouching ? crouchedDarkVisibility : darkVisibility;
+            }
+        }
+
         public bool IsOutOfPlay => outOfPlay || HasEscaped;
 
         public Vector3 ApproachPoint =>
             hiding != null && hiding.IsHidden ? hiding.ReturnPosition : transform.position;
 
+        public bool IsBreathAudible => hiding != null && hiding.BreathAudible;
+
+
         // Once the front door gives way the run is won, so the loud escape noise cannot bring
         // the enemy over to catch a winner.
         private bool HasEscaped => escapeExit != null && escapeExit.HasEscaped;
+
+        [Header("Bursting out of hiding")]
+        [Tooltip("Seconds before the door can be slammed into an enemy again (no endless hide-and-slam loop).")]
+        [SerializeField, Min(0f)] private float doorBashCooldown = 20f;
+
+        [Tooltip("Loudness of the door slamming into the enemy.")]
+        [SerializeField, Range(0f, 1f)] private float doorBashLoudness = 0.8f;
+
+        private float lastDoorBash = -999f;
+
+        /// <summary>
+        /// True while hidden with an enemy right at the door and the slam ready: leaving now knocks it back
+        /// (HidingHud says "E - выбить дверцу").
+        /// </summary>
+        public bool CanBurstOut => hiding != null && hiding.IsHidden && !IsOutOfPlay
+                                   && Time.time - lastDoorBash >= doorBashCooldown && EnemyAtDoor() != null;
 
         private Vector3 spawnPosition;
         private Quaternion spawnRotation;
         private float lockRemaining;
         private bool outOfPlay;
+
+        private void OnEnable()
+        {
+            if (hiding == null)
+            {
+                hiding = GetComponent<PlayerHidingController>();
+            }
+
+            if (hiding != null)
+            {
+                hiding.Leaving += OnLeavingHide;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (hiding != null)
+            {
+                hiding.Leaving -= OnLeavingHide;
+            }
+        }
+
+        private EnemyBrain EnemyAtDoor()
+        {
+            if (hiding == null || !hiding.IsHidden)
+            {
+                return null;
+            }
+
+            Vector3 door = hiding.ReturnPosition;
+            foreach (EnemyBrain enemy in EnemyBrain.Active)
+            {
+                if (enemy != null && enemy.isActiveAndEnabled && enemy.IsAtHidingPlace(door))
+                {
+                    return enemy;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Leaving a hiding place with an enemy right at the door (2026-11-25, owner: stepping out used to land the player
+        /// in its arms): the door slams into it, it reels, and the player comes out beside the door facing away from it.
+        /// </summary>
+        private void OnLeavingHide(AshenWoods.Interaction.HidingSpot spot)
+        {
+            if (IsOutOfPlay || spot == null || Time.time - lastDoorBash < doorBashCooldown)
+            {
+                return;
+            }
+
+            EnemyBrain enemy = EnemyAtDoor();
+            if (enemy == null)
+            {
+                return;
+            }
+
+            lastDoorBash = Time.time;
+            Vector3 door = hiding.ReturnPosition;
+            Vector3 outward = spot.HidePoint.forward;
+            outward.y = 0f;
+            outward = outward.sqrMagnitude > 0.001f ? outward.normalized : Vector3.forward;
+            Vector3 side = Vector3.Cross(Vector3.up, outward);
+
+            // Come out on the side away from it, if there is room; else straight out (its body lets the player through).
+            Vector3 toEnemy = enemy.transform.position - door;
+            float first = Vector3.Dot(toEnemy, side) > 0f ? -1f : 1f;
+            Vector3 exit = door;
+            foreach (float sign in new[] { first, -first })
+            {
+                Vector3 candidate = door + side * (sign * 1.0f) + outward * 0.2f;
+                if (IsFree(candidate))
+                {
+                    exit = candidate;
+                    break;
+                }
+            }
+
+            Vector3 away = exit - enemy.transform.position;
+            away.y = 0f;
+            Quaternion facing = away.sqrMagnitude > 0.001f ? Quaternion.LookRotation(away.normalized) : spot.HidePoint.rotation;
+            hiding.OverrideExit(exit, facing);
+
+            enemy.Shove(door);
+            AshenWoods.World.NoiseSystem.Emit(door, AshenWoods.World.NoiseCategory.Hiding, doorBashLoudness, this);
+        }
+
+        private bool IsFree(Vector3 feet)
+        {
+            var body = GetComponent<CharacterController>();
+            float radius = body != null ? body.radius : 0.35f;
+            float height = body != null ? body.height : 1.8f;
+            int mask = ~(1 << gameObject.layer);
+            return !Physics.CheckCapsule(feet + Vector3.up * (radius + 0.05f), feet + Vector3.up * (height - radius), radius,
+                mask, QueryTriggerInteraction.Ignore);
+        }
 
         private void Awake()
         {
@@ -107,6 +262,11 @@ namespace AshenWoods.Player
                 escapeExit = FindAnyObjectByType<EscapeExit>();
             }
 
+            if (flashlight == null)
+            {
+                flashlight = GetComponentInChildren<PlayerFlashlight>(true);
+            }
+
             if (aimPoint == null)
             {
                 Camera camera = GetComponentInChildren<Camera>(true);
@@ -122,6 +282,8 @@ namespace AshenWoods.Player
 
         private void Update()
         {
+            TrackThreat();
+
             if (lockRemaining <= 0f)
             {
                 return;
@@ -135,6 +297,25 @@ namespace AshenWoods.Player
             }
         }
 
+        /// <summary>
+        /// Shares how close the nearest enemy is (AshenWoods.World.Threat: the torch stutters, lamps buzz, the hiding
+        /// panel warns).
+        /// </summary>
+        private void TrackThreat()
+        {
+            float nearest = float.MaxValue;
+            foreach (EnemyBrain enemy in EnemyBrain.Active)
+            {
+                if (enemy != null && !enemy.IsStunned)
+                {
+                    nearest = Mathf.Min(nearest, Vector3.Distance(enemy.transform.position, transform.position));
+                }
+            }
+
+            AshenWoods.World.Threat.NearestEnemyDistance = nearest;
+            // How to hold the breath is on screen the whole time the player is hidden (AshenWoods.UI.HidingHud).
+        }
+
         /// <summary>Takes the player out of (or back into) play. Used by the game flow.</summary>
         public void SetOutOfPlay(bool value)
         {
@@ -143,7 +324,7 @@ namespace AshenWoods.Player
 
         public void NotifyCaught(Vector3 enemyPosition)
         {
-            if (IsOutOfPlay)
+            if (IsOutOfPlay || DebugFlags.God)
             {
                 return;
             }

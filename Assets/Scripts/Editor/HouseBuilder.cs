@@ -9,37 +9,26 @@ using AshenWoods.Player;
 namespace AshenWoods.EditorTools
 {
     /// <summary>
-    /// The rebuilt house: two storeys, eight rooms, one staircase, built from a plan that cannot
-    /// overlap itself.
+    /// The house level: a 24 x 16 m, two-storey house with sixteen rooms, two staircases and a
+    /// long corridor on each floor. The plan itself lives in HouseBuilder.Layout.cs as two
+    /// letter maps; this file turns it into a scene and puts the stage objects on their anchors.
     ///
-    /// Why a new scene instead of patching the playground: the playground grew room by room
-    /// (Stage 1 shell, corridor, then the east wing), so its walls, lintels and door frames were
-    /// authored at different times and started sharing the same space. This builder lays the
-    /// whole house out at once from one set of coordinates:
+    ///   GROUND (y 0)                               FIRST FLOOR (y 3.2)
+    ///   kitchen + locked pantry (crowbar)          master bedroom (wardrobe)
+    ///   back hall -> back stair                    linen room
+    ///   dining room, utility room                  study (breaker panel)
+    ///   corridor, 24 m east-west                   storeroom (enemy wakes here)
+    ///   living room (crouch tunnel, iron key)      corridor, 24 m east-west
+    ///   foyer (player start, front door, main stair) guest bedroom (wardrobe), playroom
+    ///   library, toilet                            bathroom, small room
     ///
-    ///  - Every room is a rectangle, and walls sit on the rectangle boundaries, so no two wall
-    ///    boxes ever occupy the same space.
-    ///  - A doorway is cut out of one wall (opening + lintel + optional sill), never added as a
-    ///    second frame on top of a wall, which is what made the old door frames overlap.
-    ///  - Door openings are 1.6 m for a 1.5 m door leaf, 2.1 m tall, with a 2.15 m wall hole
-    ///    around the escape frame so the frame never z-fights with the wall.
+    /// Both stairs land on the upper corridor, so the two floors form loops: there is always a
+    /// second way round, and the enemy has two ways up.
     ///
-    /// Interior rectangles (1 unit = 1 m, ground floor top at y = 0,
-    /// first floor top at y = 3.2, ceiling at y = 6.0):
-    ///
-    ///   GROUND                              FIRST FLOOR
-    ///   living   x -6.0 .. 0.2  z -2 .. 1.8  study    (above the living room)
-    ///   kitchen  x  0.4 .. 6.0  z -2 .. 1.8  bathroom (above the kitchen)
-    ///   foyer    x -6.0 .. 0.2  z  2 .. 6.0  bedroom  (above the foyer, player-side start below)
-    ///   hall     x  0.4 .. 6.0  z  2 .. 6.0  landing  (above the hall, stairwell hole cut out)
-    ///
-    /// The pantry is the kitchen's north-east corner (x 4.3 .. 6.0, z -2 .. -0.2) and holds the
-    /// crowbar behind the locked door. The stair runs east along the hall's south wall, so the
-    /// enemy can walk up it: a ramp collider carries the body, the treads are only drawn.
-    ///
-    /// The stage builders still create the doors, key, breaker, crowbar, escape frame, enemy,
-    /// wardrobes and navigation points; this builder then moves each one onto its house anchor.
-    /// Moving (rather than rewriting every stage constant) keeps the older scenes working.
+    /// Layout v1 (the first 12 x 8 m house) is replaced, not patched: when a scene still has the
+    /// old House root it is deleted together with the builder-made batteries, throwables,
+    /// navigation nodes and patrol points, and everything is built again from the plan. Stage
+    /// objects (doors, key, breaker, enemy, wardrobes...) are kept and moved onto new anchors.
     ///
     /// Menu:
     ///   Ashen Woods > Level > Create Two-Storey House Scene
@@ -47,7 +36,7 @@ namespace AshenWoods.EditorTools
     ///   Ashen Woods > Diagnostics > Log House Layout
     ///   Ashen Woods > Diagnostics > Log House Overlap Check
     /// </summary>
-    public static class HouseBuilder
+    public static partial class HouseBuilder
     {
         internal const string HouseScenePath = "Assets/Scenes/AshWoods_House.unity";
 
@@ -62,64 +51,17 @@ namespace AshenWoods.EditorTools
 
         // Doorways are cut 2.1 m tall; the escape frame is 2.15 m tall at the wall hole.
         private const float DoorHead = 2.1f;
-        private const float UpperDoorHead = 5.25f;
+        private const float UpperDoorHead = 2.05f; // above the upper floor
 
-        /// <summary>Where a fresh run starts: in the foyer, facing into the house.</summary>
-        internal static readonly Vector3 PlayerStartPosition = new Vector3(-2.9f, 0.05f, 4.6f);
+        /// <summary>Where a fresh run starts: in the foyer, back to the front door.</summary>
+        internal static readonly Vector3 PlayerStartPosition = new Vector3(0f, 0.05f, 6.4f);
         internal const float PlayerStartYaw = 180f;
 
-        /// <summary>The enemy starts upstairs in the study, so the first minute is quiet.</summary>
-        internal static readonly Vector3 EnemySpawnPosition = new Vector3(-2.4f, 3.2f, -0.4f);
+        /// <summary>The enemy wakes upstairs in the storeroom, the far corner from the start.</summary>
+        internal static readonly Vector3 EnemySpawnPosition = new Vector3(9f, UpperFloor, -5f);
 
-        /// <summary>The escape exit, in the foyer's south wall, centred on its 1.5 m hole.</summary>
-        internal static readonly Vector3 FrontDoorPosition = new Vector3(-2.9f, 0f, 6f);
-
-        /// <summary>
-        /// Walkable points. Ground nodes are at y = 0, first-floor nodes at y = 3.2, and the ramp
-        /// nodes sit on the ramp surface. Doorways get a node on each side, centred on the
-        /// opening, which is what lets the enemy's 0.3 m clearance fit through every link.
-        /// </summary>
-        internal static readonly Vector3[] NavNodes =
-        {
-            new Vector3(-3f, 0f, 0f),      // 0  living, centre
-            new Vector3(-3f, 0f, 1.2f),    // 1  living, south of the main door
-            new Vector3(-3f, 0f, 2.8f),    // 2  foyer, north of the main door
-            new Vector3(-3f, 0f, 4.4f),    // 3  foyer, centre (player starts just south of here)
-            new Vector3(-1f, 0f, 4.4f),    // 4  foyer, at the hall doorway
-            new Vector3(1.4f, 0f, 4.4f),   // 5  hall, at the foyer doorway
-            new Vector3(2.8f, 0f, 4.4f),   // 6  hall, centre
-            new Vector3(0.8f, 0f, 5.5f),   // 7  hall, foot of the stairs
-            new Vector3(3.4f, 0f, 2.8f),   // 8  hall, at the kitchen doorway
-            new Vector3(2.4f, 0f, 0.6f),   // 9  kitchen, centre
-            new Vector3(3.4f, 0f, -1.1f),  // 10 kitchen, at the pantry door
-            new Vector3(5.2f, 0f, -1.1f),  // 11 pantry
-            new Vector3(-4.6f, 0f, 0.6f),  // 12 living west, by the crouch tunnel
-            new Vector3(-3f, 3.2f, 0f),    // 13 study, centre (enemy start)
-            new Vector3(-3f, 3.2f, 1.2f),  // 14 study, south of the bedroom door
-            new Vector3(-3f, 3.2f, 2.8f),  // 15 bedroom, north of the study door
-            new Vector3(-3f, 3.2f, 4.4f),  // 16 bedroom, centre
-            new Vector3(-0.5f, 3.2f, 3.6f),// 17 bedroom, at the landing doorway
-            new Vector3(1.4f, 3.2f, 4.4f), // 18 landing, at the bedroom doorway
-            new Vector3(2.8f, 3.2f, 4.4f), // 19 landing, centre
-            new Vector3(3.4f, 3.2f, 2.8f), // 20 landing, at the bathroom doorway
-            new Vector3(2.4f, 3.2f, 0.6f), // 21 bathroom, centre
-            new Vector3(5.5f, 3.2f, 5.5f), // 22 top of the stairs
-            new Vector3(5.3f, 3.2f, 4.4f), // 23 landing, east
-            new Vector3(-4.6f, 3.2f, 0.4f),// 24 study west
-            new Vector3(-4.6f, 3.2f, 4.4f),// 25 bedroom west
-            new Vector3(0.9f, 3.2f, 0.4f), // 26 bathroom, at the study doorway
-            new Vector3(1.9f, 0.44f, 5.5f),// 27 stairs, first ramp step
-            new Vector3(2.8f, 1.24f, 5.5f),// 28 stairs, second ramp step
-            new Vector3(3.7f, 2.04f, 5.5f),// 29 stairs, third ramp step
-            new Vector3(4.6f, 2.84f, 5.5f),// 30 stairs, fourth ramp step
-            new Vector3(0.9f, 0f, 0.4f)    // 31 kitchen, at the living-room doorway
-        };
-
-        /// <summary>
-        /// The loop the enemy walks when it has no reason to chase. It uses both floors, so the
-        /// stairs are exercised on every patrol and a player hiding upstairs is never safe.
-        /// </summary>
-        private static readonly int[] PatrolNodeIndices = { 0, 3, 5, 8, 10, 15, 16, 19, 21, 13 };
+        /// <summary>The escape exit, on the inside face of the foyer's south wall.</summary>
+        internal static readonly Vector3 FrontDoorPosition = new Vector3(0f, 0f, 7.9f);
 
         // ------------------------------------------------------------------- menus
 
@@ -157,9 +99,9 @@ namespace AshenWoods.EditorTools
             AddSceneToBuildSettings(HouseScenePath);
 
             Debug.Log($"[House] Created {HouseScenePath} with {added} piece(s).\n" +
-                      "Press Play. The player starts in the foyer, the enemy starts upstairs in the study.\n" +
-                      "Route: iron key under the crouch tunnel (living room) -> locked pantry (kitchen) -> " +
-                      "crowbar -> breaker panel (upstairs study) -> front door (foyer).");
+                      "Press Play. The player starts in the foyer, the enemy wakes upstairs in the storeroom.\n" +
+                      "Route: iron key under the low table (living room) -> locked pantry (kitchen) -> crowbar -> " +
+                      "breaker panel (upstairs storeroom) -> front door (foyer).");
         }
 
         [MenuItem("Ashen Woods/Level/Build Or Update The House", false, 2)]
@@ -180,7 +122,7 @@ namespace AshenWoods.EditorTools
             if (added > 0)
             {
                 EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
-                Debug.Log($"[House] Added {added} missing piece(s). Save the scene with Ctrl+S, then press Play.");
+                Debug.Log($"[House] Added or moved {added} piece(s). Save the scene with Ctrl+S, then press Play.");
             }
             else
             {
@@ -213,9 +155,8 @@ namespace AshenWoods.EditorTools
         // ------------------------------------------------------------------- build
 
         /// <summary>
-        /// Adds every missing house piece and adopts the stage objects. Additive and idempotent:
-        /// boxes are looked up by name, and the stage objects are only moved while they still sit
-        /// where their builder put them, so anything moved by hand survives.
+        /// Builds (or upgrades) the house and adopts the stage objects. Idempotent: boxes are
+        /// looked up by name, stage objects are only moved when they are not on their anchor.
         /// </summary>
         /// <returns>How many pieces were added or moved.</returns>
         internal static int EnsureHouseInActiveScene()
@@ -237,6 +178,8 @@ namespace AshenWoods.EditorTools
                 environment = new GameObject(EnvironmentName);
             }
 
+            int added = UpgradeOldLayout(environment.transform);
+
             Transform house = environment.transform.Find(HouseRootName);
             if (house == null)
             {
@@ -245,20 +188,23 @@ namespace AshenWoods.EditorTools
                 house = houseObject.transform;
             }
 
-            int added = 0;
+            if (house.Find(LayoutMarkerName) == null)
+            {
+                new GameObject(LayoutMarkerName).transform.SetParent(house, false);
+            }
 
-            // Stage 2 builds its own little closet when an Environment exists. The pantry wall is
+            // Stage 2 builds its own little closet when an Environment exists. The pantry is
             // part of the house plan instead, so this empty root tells Stage 2 the closet exists.
             if (GameObject.Find(ClosetRootName) == null)
             {
-                GameObject closet = new GameObject(ClosetRootName);
-                closet.transform.SetParent(house, false);
+                new GameObject(ClosetRootName).transform.SetParent(house, false);
                 added++;
             }
 
             added += EnsureFloors(house, floorMaterial, ceilingMaterial);
-            added += EnsureWalls(house, wallMaterial);
-            added += EnsureStairs(house, trimMaterial);
+            added += EnsureStoreyWalls(house, "House_G", GroundPlan, GroundOpenings, 0f, GroundCeiling, wallMaterial);
+            added += EnsureStoreyWalls(house, "House_U", UpperPlan, UpperOpenings, UpperFloor, UpperCeiling, wallMaterial);
+            added += EnsureStairRamps(house, trimMaterial);
             added += EnsureProps(house, propMaterial, trimMaterial);
             added += EnsureLighting(house);
             added += EnsurePlayer();
@@ -271,164 +217,199 @@ namespace AshenWoods.EditorTools
             added += Stage5NoiseBuilder.EnsureStage5Pieces();
             added += Stage6ObjectiveBuilder.EnsureStage6Pieces();
             added += Stage7FlowBuilder.EnsureStage7Pieces();
+            added += Stage8ThrowableBuilder.EnsureStage8Pieces();
+            added += Stage9PolishBuilder.EnsureStage9Pieces();
+            added += Stage10InterfaceBuilder.EnsureStage10Pieces();
 
-            added += EnsureExtraNavNodes();
+            added += EnsureHouseHidingSpots(house);
+            added += EnsureDressing(house);
+            added += EnsureNavigationPoints();
             added += AlignStageObjects();
+            Stage6ObjectiveBuilder.RefreshHouseWording();
 
             AssetDatabase.SaveAssets();
             return added;
+        }
+
+        /// <summary>
+        /// Removes everything the builders made for layout v1 so the plan can be built fresh:
+        /// the House root, spare batteries, throwables, navigation nodes and patrol points.
+        /// Stage objects (doors, key, breaker, crowbar, enemy, wardrobes, escape) are kept and
+        /// re-anchored later; the player is moved to the new start.
+        /// </summary>
+        private static int UpgradeOldLayout(Transform environment)
+        {
+            Transform house = environment.Find(HouseRootName);
+            if (house == null || house.Find(LayoutMarkerName) != null)
+            {
+                return 0;
+            }
+
+            int removed = 0;
+            Object.DestroyImmediate(house.gameObject);
+            removed++;
+
+            GameObject items = GameObject.Find("Items");
+            if (items != null)
+            {
+                for (int i = items.transform.childCount - 1; i >= 0; i--)
+                {
+                    Transform child = items.transform.GetChild(i);
+                    if (child.name.StartsWith("Battery_") || child.name.StartsWith("Throwable_"))
+                    {
+                        Object.DestroyImmediate(child.gameObject);
+                        removed++;
+                    }
+                }
+            }
+
+            GameObject navigationRoot = GameObject.Find("Enemy_Navigation");
+            if (navigationRoot != null)
+            {
+                foreach (string group in new[] { "NavNodes", "PatrolRoute" })
+                {
+                    Transform root = navigationRoot.transform.Find(group);
+                    if (root == null)
+                    {
+                        continue;
+                    }
+
+                    for (int i = root.childCount - 1; i >= 0; i--)
+                    {
+                        Object.DestroyImmediate(root.GetChild(i).gameObject);
+                        removed++;
+                    }
+                }
+            }
+
+            PlayerMotor player = Object.FindAnyObjectByType<PlayerMotor>();
+            if (player != null)
+            {
+                CharacterController controller = player.GetComponent<CharacterController>();
+                bool wasEnabled = controller != null && controller.enabled;
+                if (controller != null)
+                {
+                    controller.enabled = false;
+                }
+
+                player.transform.SetPositionAndRotation(PlayerStartPosition, Quaternion.Euler(0f, PlayerStartYaw, 0f));
+
+                if (controller != null)
+                {
+                    controller.enabled = wasEnabled;
+                }
+
+                if (PrefabUtility.IsPartOfPrefabInstance(player.gameObject))
+                {
+                    PrefabUtility.RecordPrefabInstancePropertyModifications(player.transform);
+                }
+            }
+
+            Debug.Log($"[House] Replaced the old 12 x 8 m layout with layout v{LayoutVersion} ({removed} old piece(s) removed).");
+            return removed;
         }
 
         // ----------------------------------------------------------------- floors
 
         private static int EnsureFloors(Transform house, Material floor, Material ceiling)
         {
-            int added = 0;
+            float width = Columns * Cell + Wall;
+            float depth = Rows * Cell + Wall;
 
-            // Ground slab, then the four first-floor slabs. The landing is three pieces because
-            // the stairwell is a hole: the stairs land on the east piece.
+            int added = 0;
             added += EnsureBox(house, "House_Floor_Ground",
-                new Vector3(0f, -0.1f, 2f), new Vector3(12f, 0.2f, 8f), floor);
-            added += EnsureBox(house, "House_Floor_Study",
-                new Vector3(-2.9f, 3.1f, -0.1f), new Vector3(6.2f, 0.2f, 3.8f), floor);
-            added += EnsureBox(house, "House_Floor_Bathroom",
-                new Vector3(3.2f, 3.1f, -0.1f), new Vector3(5.6f, 0.2f, 3.8f), floor);
-            added += EnsureBox(house, "House_Floor_Bedroom",
-                new Vector3(-2.9f, 3.1f, 4f), new Vector3(6.2f, 0.2f, 4f), floor);
-            added += EnsureBox(house, "House_Floor_Landing_North",
-                new Vector3(3.2f, 3.1f, 3.5f), new Vector3(5.6f, 0.2f, 3f), floor);
-            added += EnsureBox(house, "House_Floor_Landing_West",
-                new Vector3(0.9f, 3.1f, 5.5f), new Vector3(1f, 0.2f, 1f), floor);
-            added += EnsureBox(house, "House_Floor_Landing_East",
-                new Vector3(5.5f, 3.1f, 5.5f), new Vector3(1f, 0.2f, 1f), floor);
-
+                new Vector3(0f, -0.1f, 0f), new Vector3(width, 0.2f, depth), floor);
+            added += EnsureUpperSlab(house, floor);
             added += EnsureBox(house, "House_Ceiling",
-                new Vector3(0f, UpperCeiling + 0.1f, 2f), new Vector3(12f, 0.2f, 8f), ceiling);
-
-            return added;
-        }
-
-        // ------------------------------------------------------------------ walls
-
-        private static int EnsureWalls(Transform house, Material wall)
-        {
-            int added = 0;
-
-            // Exterior shell. The south wall carries the escape exit, so its 1.5 m hole is cut
-            // 2.15 m tall: the frame's own lintel fits inside the hole instead of inside the wall.
-            added += EnsureWallX(house, "House_Wall_North", -2.1f, -6.1f, 6.1f, 0f, UpperCeiling, wall);
-            added += EnsureWallXOpening(house, "House_Wall_South", 6.1f, -6.1f, 6.1f, 0f, UpperCeiling,
-                -3.65f, -2.15f, 0f, 2.15f, wall);
-            added += EnsureWallZ(house, "House_Wall_West", -6.1f, -2f, 6f, 0f, UpperCeiling, wall);
-            added += EnsureWallZ(house, "House_Wall_East", 6.1f, -2f, 6f, 0f, UpperCeiling, wall);
-
-            // Ground floor partitions. The centre wall spans to z = 2 so the junction with the
-            // mid wall is filled instead of leaving a 0.2 m square hole at the crossing.
-            added += EnsureWallZOpening(house, "House_Wall_Centre_Ground_North", 0.3f, -2f, 2f, 0f,
-                GroundCeiling, -0.6f, 1f, 0f, DoorHead, wall);
-            added += EnsureWallZOpening(house, "House_Wall_Centre_Ground_South", 0.3f, 2f, 6f, 0f,
-                GroundCeiling, 3.6f, 5.2f, 0f, DoorHead, wall);
-            added += EnsureWallXOpening(house, "House_Wall_Mid_Ground_West", 1.9f, -6f, 0.2f, 0f,
-                GroundCeiling, -3.8f, -2.2f, 0f, DoorHead, wall);
-            added += EnsureWallXOpening(house, "House_Wall_Mid_Ground_East", 1.9f, 0.4f, 6f, 0f,
-                GroundCeiling, 2.6f, 4.2f, 0f, DoorHead, wall);
-
-            // Pantry: partition at x = 4.2 with the locked doorway, and its south wall.
-            added += EnsureWallZOpening(house, "House_Wall_Pantry_West", 4.2f, -2f, 0f, 0f,
-                GroundCeiling, -1.9f, -0.3f, 0f, DoorHead, wall);
-            added += EnsureWallX(house, "House_Wall_Pantry_South", -0.1f, 4.3f, 6f, 0f,
-                GroundCeiling, wall);
-
-            // First floor. These doorways are open (no doors) and 2.0 m wide, which gives the
-            // navigation graph room to pass a 0.3 m clearance ray on each side.
-            added += EnsureWallZOpening(house, "House_Wall_Centre_Upper_North", 0.3f, -2f, 2f,
-                UpperFloor, UpperCeiling, -0.6f, 1.4f, UpperFloor, UpperDoorHead, wall);
-            added += EnsureWallZOpening(house, "House_Wall_Centre_Upper_South", 0.3f, 2f, 6f,
-                UpperFloor, UpperCeiling, 3.4f, 5.4f, UpperFloor, UpperDoorHead, wall);
-            added += EnsureWallXOpening(house, "House_Wall_Mid_Upper_West", 1.9f, -6f, 0.2f,
-                UpperFloor, UpperCeiling, -4f, -2f, UpperFloor, UpperDoorHead, wall);
-            added += EnsureWallXOpening(house, "House_Wall_Mid_Upper_East", 1.9f, 0.4f, 6f,
-                UpperFloor, UpperCeiling, 2.4f, 4.4f, UpperFloor, UpperDoorHead, wall);
-
-            return added;
-        }
-
-        // ----------------------------------------------------------------- stairs
-
-        private static int EnsureStairs(Transform house, Material trim)
-        {
-            int added = 0;
-
-            // rise 3.2 over a 3.6 run: 41.6 degrees, inside the player's 45 degree slope limit,
-            // and the collider is one smooth ramp so the enemy's height probes never clip a tread.
-            if (EnsureBoxRotated(house, "House_Stair_Ramp",
-                    new Vector3(3.2f, 1.525f, 5.5f), new Vector3(4.82f, 0.2f, 1f),
-                    Quaternion.Euler(0f, 0f, 41.63f), trim) != null)
-            {
-                added++;
-            }
-
-            // Drawn treads sit on the ramp surface; they are decorative, so they carry no collider.
-            for (int i = 0; i < 18; i++)
-            {
-                float along = -2.2f + (i + 0.5f) * 0.244f;
-                GameObject tread = EnsureBoxRotated(house, "House_Stair_Tread_" + (i + 1),
-                    new Vector3(3.2f + along * 0.747f, 1.525f + along * 0.664f + 0.12f, 5.5f),
-                    new Vector3(0.22f, 0.05f, 1f), Quaternion.Euler(0f, 0f, 41.63f), trim);
-
-                if (tread == null)
-                {
-                    continue;
-                }
-
-                added++;
-
-                if (tread.GetComponent<Collider>() != null)
-                {
-                    Object.DestroyImmediate(tread.GetComponent<Collider>());
-                }
-            }
-
-            // Rails guard the first-floor hole except where the stairs arrive (x 5 .. 6).
-            added += EnsureBox(house, "House_Stair_Rail_North",
-                new Vector3(3.2f, 3.65f, 5f), new Vector3(3.6f, 0.9f, 0.08f), trim);
-            // Starts at z 5.04 so it butts against the north rail instead of overlapping it.
-            added += EnsureBox(house, "House_Stair_Rail_West",
-                new Vector3(1.4f, 3.65f, 5.52f), new Vector3(0.08f, 0.9f, 0.96f), trim);
-
+                new Vector3(0f, UpperCeiling + 0.1f, 0f), new Vector3(width, 0.2f, depth), ceiling);
             return added;
         }
 
         // ------------------------------------------------------------------ props
 
+        /// <summary>
+        /// Furniture. Everything stands against a wall and is at most 0.5 m deep, so the 1 m
+        /// from a wall to a cell centre stays clear for the enemy's routes; free-standing pieces
+        /// sit between cell centres, never on one.
+        /// </summary>
         private static int EnsureProps(Transform house, Material prop, Material trim)
         {
             int added = 0;
+            const float g = 0f;          // ground floor
+            const float u = UpperFloor;  // upper floor
 
-            // Living room: the crouch tunnel. 1.1 m of clearance under a 1.25 m roof: the player
-            // (0.95 m crouched) fits, the enemy's 1.5 m head clearance never does.
-            added += EnsureBox(house, "House_Living_CrouchRoof",
-                new Vector3(-4.8f, 1.25f, -1.3f), new Vector3(2.4f, 0.3f, 1.4f), prop);
-            added += EnsureBox(house, "House_Living_CrouchSupport",
-                new Vector3(-3.7f, 0.55f, -1.3f), new Vector3(0.2f, 1.1f, 1.4f), prop);
-            added += EnsureBox(house, "House_Living_Crate",
-                new Vector3(-1.4f, 0.3f, 0.8f), new Vector3(0.6f, 0.6f, 0.6f), prop);
-
-            // Foyer and kitchen cover.
-            added += EnsureBox(house, "House_Foyer_Sideboard",
-                new Vector3(-5.65f, 0.4f, 5.5f), new Vector3(0.7f, 0.8f, 1f), prop);
-            added += EnsureBox(house, "House_Kitchen_Counter",
-                new Vector3(5.75f, 0.45f, 0.8f), new Vector3(0.5f, 0.9f, 1.6f), prop);
-            added += EnsureBox(house, "House_Kitchen_Island",
-                new Vector3(1.4f, 0.45f, -0.6f), new Vector3(1f, 0.9f, 0.6f), trim);
-            added += EnsureBox(house, "House_Pantry_Shelf",
-                new Vector3(5.1f, 0.9f, -1.8f), new Vector3(1.4f, 1.8f, 0.35f), trim);
-
-            // Bedroom bed, clear of every walk link.
-            added += EnsureBox(house, "House_Bedroom_Bed",
-                new Vector3(-0.6f, 3.45f, 5f), new Vector3(1.6f, 0.5f, 1.8f), prop);
+            // Living room: the crouch tunnel in the north-west corner. 1.1 m under a 1.25 m roof:
+            // the crouching player (0.95 m) fits, the enemy (1.5 m head clearance) never does.
+            added += EnsureBox(house, "House_Living_CrouchRoof", new Vector3(-10.7f, 1.25f, 0.8f), new Vector3(2.4f, 0.3f, 1.4f), prop);
+            added += EnsureBox(house, "House_Living_CrouchSupport", new Vector3(-9.6f, 0.55f, 0.8f), new Vector3(0.2f, 1.1f, 1.4f), prop);
+            // Furniture is in HouseBuilder.Dressing.cs (models). Only boxes without a model are here.
+            added += EnsureBox(house, "House_Toilet_Sink", new Vector3(11.65f, g + 0.45f, 7f), new Vector3(0.5f, 0.9f, 0.6f), trim);
+            added += EnsureBox(house, "House_Play_ToyChest", new Vector3(0f, u + 0.3f, 7.65f), new Vector3(1.2f, 0.6f, 0.5f), prop);
+            added += EnsureBox(house, "House_Bath_Tub", new Vector3(11.6f, u + 0.3f, 2f), new Vector3(0.6f, 0.6f, 1.8f), trim);
 
             return added;
+        }
+
+        // ---------------------------------------------------------- hiding spots
+
+        /// <summary>
+        /// Stage 3 makes two wardrobes; a house this size needs a hiding place within a few
+        /// seconds of every route. Six more wardrobes and three beds to hide under, all against
+        /// walls and centred on a grid line, so they stand between navigation nodes.
+        /// A wardrobe or bed opens towards its local +z.
+        /// </summary>
+        private static int EnsureHouseHidingSpots(Transform house)
+        {
+            GameObject wardrobe = Stage3EnemyBuilder.WardrobePrefab();
+            GameObject bed = Stage3EnemyBuilder.BedPrefab();
+            Quaternion facesSouth = Quaternion.identity;               // against a north wall
+            Quaternion facesNorth = Quaternion.Euler(0f, 180f, 0f);     // against a south wall
+            Quaternion facesWest = Quaternion.Euler(0f, -90f, 0f);      // against an east wall
+            const float u = UpperFloor;
+
+            int added = 0;
+
+            // Ground floor.
+            added += Stage3EnemyBuilder.PlaceHidingSpot(wardrobe, "Hiding_Wardrobe_Kitchen", new Vector3(-6f, 0f, -7.575f), facesSouth);
+            added += Stage3EnemyBuilder.PlaceHidingSpot(wardrobe, "Hiding_Wardrobe_Utility", new Vector3(10f, 0f, -7.575f), facesSouth);
+            added += Stage3EnemyBuilder.PlaceHidingSpot(wardrobe, "Hiding_Wardrobe_Foyer", new Vector3(2f, 0f, 7.575f), facesNorth);
+            added += Stage3EnemyBuilder.PlaceHidingSpot(wardrobe, "Hiding_Wardrobe_Library", new Vector3(6f, 0f, 7.575f), facesNorth);
+
+            // Upper floor.
+            added += Stage3EnemyBuilder.PlaceHidingSpot(wardrobe, "Hiding_Wardrobe_Study", new Vector3(2f, u, -2.425f), facesNorth);
+            added += Stage3EnemyBuilder.PlaceHidingSpot(wardrobe, "Hiding_Wardrobe_SmallRoom", new Vector3(11.575f, u, 6f), facesWest);
+            added += Stage3EnemyBuilder.PlaceHidingSpot(bed, "Hiding_Bed_Master", new Vector3(-6f, u, -6.95f), facesSouth);
+            added += Stage3EnemyBuilder.PlaceHidingSpot(bed, "Hiding_Bed_Guest", new Vector3(-8f, u, 6.95f), facesNorth);
+            added += Stage3EnemyBuilder.PlaceHidingSpot(bed, "Hiding_Bed_Playroom", new Vector3(-2f, u, 6.95f), facesNorth);
+
+            // The plain box beds they replace, and the items that lay on those.
+            foreach (string oldBed in new[] { "House_Master_Bed", "House_Guest_Bed" })
+            {
+                Transform box = house.Find(oldBed);
+                if (box != null)
+                {
+                    Object.DestroyImmediate(box.gameObject);
+                    added++;
+                }
+            }
+
+            added += RelocateIfAt("Battery_2", new Vector3(-8f, 3.76f, 7.1f), new Vector3(-8f, u + 0.62f, 6.95f));
+            added += RelocateIfAt("Throwable_Bottle_6", new Vector3(-6f, 3.855f, -7.3f), new Vector3(-6f, u + 0.75f, -6.6f));
+            return added;
+        }
+
+        /// <summary>Moves an object only while it still stands at the old builder position.</summary>
+        private static int RelocateIfAt(string name, Vector3 oldPosition, Vector3 newPosition)
+        {
+            GameObject target = GameObject.Find(name);
+            if (target == null || Vector3.Distance(target.transform.position, oldPosition) > 0.02f)
+            {
+                return 0;
+            }
+
+            target.transform.position = newPosition;
+            EditorUtility.SetDirty(target.transform);
+            return 1;
         }
 
         // --------------------------------------------------------------- lighting
@@ -445,36 +426,54 @@ namespace AshenWoods.EditorTools
                 added++;
             }
 
-            added += EnsurePointLight(lighting, "House_Light_Foyer",
-                new Vector3(-2.9f, 2.6f, 4.4f), 2.8f, 9f, new Color(1f, 0.86f, 0.68f));
-            added += EnsurePointLight(lighting, "House_Light_Living",
-                new Vector3(-3f, 2.6f, 0f), 2.6f, 9f, new Color(1f, 0.85f, 0.65f));
-            added += EnsurePointLight(lighting, "House_Light_Kitchen",
-                new Vector3(3f, 2.55f, 0.6f), 2.4f, 8f, new Color(0.86f, 0.9f, 0.84f));
-            added += EnsurePointLight(lighting, "House_Light_Hall",
-                new Vector3(4.4f, 2.6f, 3.2f), 2.6f, 8f, new Color(1f, 0.87f, 0.7f));
-            added += EnsurePointLight(lighting, "House_Light_Pantry",
-                new Vector3(5.1f, 2.5f, -1.2f), 1.2f, 4f, new Color(0.95f, 0.9f, 0.8f));
-            added += EnsurePointLight(lighting, "House_Light_Bedroom",
-                new Vector3(-3f, 5.5f, 4.4f), 2.4f, 9f, new Color(1f, 0.84f, 0.66f));
-            added += EnsurePointLight(lighting, "House_Light_Study",
-                new Vector3(-3f, 5.5f, 0f), 2.2f, 8f, new Color(0.9f, 0.88f, 0.78f));
-            added += EnsurePointLight(lighting, "House_Light_Bathroom",
-                new Vector3(3.2f, 5.5f, 0.6f), 1.8f, 7f, new Color(0.84f, 0.9f, 0.9f));
-            added += EnsurePointLight(lighting, "House_Light_Landing",
-                new Vector3(2.6f, 5.5f, 4.4f), 2f, 8f, new Color(1f, 0.86f, 0.7f));
+            Color warm = new Color(1f, 0.86f, 0.68f);
+            Color cold = new Color(0.86f, 0.9f, 0.86f);
+            const float g = 2.6f;
+            const float u = 5.5f;
 
+            // Ground floor.
+            added += EnsurePointLight(lighting, "House_Light_Foyer", new Vector3(1f, g, 5f), 2.6f, 9f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Living", new Vector3(-7f, g, 4f), 2.6f, 10f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Kitchen", new Vector3(-8f, g, -5f), 2.4f, 9f, cold);
+            added += EnsurePointLight(lighting, "House_Light_Pantry", new Vector3(-10f, 2.5f, -1f), 1.2f, 4f, cold);
+            added += EnsurePointLight(lighting, "House_Light_Dining", new Vector3(4f, g, -5f), 2.4f, 9f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Utility", new Vector3(10f, g, -5f), 1.6f, 6f, cold);
+            added += EnsurePointLight(lighting, "House_Light_BackHall", new Vector3(-3f, g, -5f), 1.4f, 5f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Library", new Vector3(8f, g, 3f), 2.4f, 9f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Toilet", new Vector3(10f, g, 6f), 1.4f, 5f, cold);
+            added += EnsurePointLight(lighting, "House_Light_Corridor_W", new Vector3(-7f, g, -1f), 1.8f, 7f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Corridor_E", new Vector3(5f, g, -1f), 1.8f, 7f, warm);
+
+            // Upper floor.
+            added += EnsurePointLight(lighting, "House_Light_Master", new Vector3(-8f, u, -5f), 2.4f, 9f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Linen", new Vector3(-3f, u, -5f), 1.2f, 5f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Study", new Vector3(4f, u, -5f), 2.2f, 9f, cold);
+            added += EnsurePointLight(lighting, "House_Light_Store", new Vector3(10f, u, -5f), 1.4f, 6f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Guest", new Vector3(-8f, u, 4f), 2.4f, 9f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Playroom", new Vector3(-1f, u, 5f), 2f, 8f, warm);
+            added += EnsurePointLight(lighting, "House_Light_Bathroom", new Vector3(8f, u, 3f), 1.8f, 8f, cold);
+            added += EnsurePointLight(lighting, "House_Light_SmallRoom", new Vector3(10f, u, 6f), 1.4f, 5f, warm);
+            added += EnsurePointLight(lighting, "House_Light_UpperCorridor_W", new Vector3(-7f, u, -1f), 1.8f, 7f, warm);
+            added += EnsurePointLight(lighting, "House_Light_UpperCorridor_E", new Vector3(5f, u, -1f), 1.8f, 7f, warm);
+
+            // Dark on purpose: the flashlight is the main light (HousePower dims it further
+            // until the breaker is fixed). Matches Stage9PolishBuilder.
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.09f, 0.09f, 0.11f);
+            RenderSettings.ambientLight = new Color(0.045f, 0.045f, 0.055f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = new Color(0.05f, 0.05f, 0.06f);
-            RenderSettings.fogDensity = 0.03f;
+            RenderSettings.fogColor = new Color(0.02f, 0.02f, 0.025f);
+            RenderSettings.fogDensity = 0.045f;
             RenderSettings.skybox = null;
 
             return added;
         }
 
+        /// <summary>
+        /// Room lamps get soft, low-resolution shadows: without them light leaked through
+        /// floors and walls and the house never got dark. Forward+ plus a 4096 shadow atlas
+        /// (Stage 9) keeps the cost reasonable.
+        /// </summary>
         private static int EnsurePointLight(
             Transform parent, string name, Vector3 position, float intensity, float range, Color color)
         {
@@ -492,7 +491,7 @@ namespace AshenWoods.EditorTools
             light.color = color;
             light.intensity = intensity;
             light.range = range;
-            light.shadows = LightShadows.Soft;
+            light.shadows = LightShadows.Soft; // low shadow tier: Stage9PolishBuilder.EnsureShadowTiers
 
             return 1;
         }
@@ -527,10 +526,11 @@ namespace AshenWoods.EditorTools
         // ------------------------------------------------------------- navigation
 
         /// <summary>
-        /// Stage 3 creates one node per entry in its own list (23). The house needs 32, so the
-        /// extra ones are created here before the alignment step positions every node.
+        /// One node per walkable cell plus the ramp points, and the patrol points in loop order.
+        /// Missing children are created; existing ones are moved onto the plan; spare patrol
+        /// points beyond the loop are removed (the brain walks every child of PatrolRoute).
         /// </summary>
-        private static int EnsureExtraNavNodes()
+        private static int EnsureNavigationPoints()
         {
             GameObject navigationRoot = GameObject.Find("Enemy_Navigation");
             if (navigationRoot == null)
@@ -538,119 +538,85 @@ namespace AshenWoods.EditorTools
                 return 0;
             }
 
-            Transform nodes = navigationRoot.transform.Find("NavNodes");
-            if (nodes == null)
+            int changed = 0;
+            changed += SyncPoints(navigationRoot.transform.Find("NavNodes"), "Node_", NavNodes);
+            changed += SyncPoints(navigationRoot.transform.Find("PatrolRoute"), "Patrol_", PatrolPoints);
+            return changed;
+        }
+
+        private static int SyncPoints(Transform root, string prefix, List<Vector3> positions)
+        {
+            if (root == null)
             {
                 return 0;
             }
 
-            int added = 0;
+            int changed = 0;
 
-            for (int i = 0; i < NavNodes.Length; i++)
+            for (int i = 0; i < positions.Count; i++)
             {
-                string pointName = "Node_" + i;
-                if (nodes.Find(pointName) != null)
+                Transform point = root.Find(prefix + i);
+                if (point == null)
                 {
-                    continue;
+                    point = new GameObject(prefix + i).transform;
+                    point.SetParent(root, false);
+                    changed++;
                 }
 
-                GameObject point = new GameObject(pointName);
-                point.transform.SetParent(nodes, false);
-                point.transform.localPosition = NavNodes[i];
-                added++;
+                point.SetSiblingIndex(i);
+
+                if (Vector3.Distance(point.localPosition, positions[i]) > 0.001f)
+                {
+                    point.localPosition = positions[i];
+                    EditorUtility.SetDirty(point);
+                    changed++;
+                }
             }
 
-            return added;
+            for (int i = root.childCount - 1; i >= positions.Count; i--)
+            {
+                Object.DestroyImmediate(root.GetChild(i).gameObject);
+                changed++;
+            }
+
+            return changed;
         }
 
         // -------------------------------------------------------------- alignment
 
         /// <summary>
         /// Moves each stage object onto its house anchor. Objects already at their anchor are
-        /// left alone, so this is safe to run again; objects a person moved by hand are listed
-        /// in the log instead of being snapped back.
+        /// left alone, so this is safe to run again.
         /// </summary>
         private static int AlignStageObjects()
         {
             int moved = 0;
 
-            // Main door: the foyer/living-room doorway. Hinge at the west side, leaf swings east.
-            moved += MoveObject("Door_Main", new Vector3(-3.75f, 0f, 1.9f), Quaternion.identity);
+            // Main door: living room <-> foyer, in the wall at x = -2. Hinge at the south end
+            // of the 1.6 m opening (z 2.2), leaf along +z.
+            moved += MoveObject("Door_Main", new Vector3(-2f, 0f, 2.25f), Quaternion.Euler(0f, -90f, 0f));
 
-            // Locked pantry door, hinge on the north side, leaf swings south along the wall.
-            moved += MoveObject("Door_Closet_Locked", new Vector3(4.2f, 0f, -1.9f),
-                Quaternion.Euler(0f, -90f, 0f));
+            // Locked pantry door: kitchen <-> pantry, in the wall at z = -2 (opening x -9.8..-8.2).
+            moved += MoveObject("Door_Closet_Locked", new Vector3(-9.75f, 0f, -2f), Quaternion.identity);
 
             // Iron key: on the floor under the crouch tunnel's roof.
-            moved += MoveObject("Key_Iron", new Vector3(-4.8f, 0.15f, -1.3f), null);
+            moved += MoveObject("Key_Iron", new Vector3(-10.7f, 0.15f, 0.8f), null);
 
-            // Breaker panel: upstairs study, on the north wall, switches facing into the room.
-            // y = first floor (3.2) + 1.35. It used to be 1.35, which put the panel on the ground
-            // floor inside the roof of the living-room crouch tunnel.
-            moved += MoveObject("BreakerPanel", new Vector3(-4f, UpperFloor + 1.35f, -1.93f), Quaternion.identity);
+            // Crowbar: in the pantry, in front of the shelf.
+            moved += MoveObject("Crowbar_Closet", new Vector3(-10.6f, 0.16f, -1.2f), null);
 
-            // Crowbar: inside the pantry, in front of the shelf.
-            moved += MoveObject("Crowbar_Closet", new Vector3(5.2f, 0.16f, -1.1f), null);
+            // Breaker panel: the upstairs storeroom (a small service room), north wall.
+            moved += MoveObject("BreakerPanel", new Vector3(10f, UpperFloor + 1.35f, -7.83f), Quaternion.identity);
 
-            // Escape exit: foyer's south wall, opening into the room.
+            // Escape exit: the foyer's south wall.
             moved += MoveObject("Escape_FrontDoor", FrontDoorPosition, Quaternion.identity);
 
-            // Enemy: study, upstairs.
+            // Enemy: the upstairs storeroom.
             moved += MoveObject("Enemy_Patroller", EnemySpawnPosition, Quaternion.identity);
 
-            // Wardrobes: one in the bedroom, one in the study.
-            moved += MoveObject("Hiding_Wardrobe_West", new Vector3(-4f, 3.2f, 5.675f),
-                Quaternion.Euler(0f, 180f, 0f));
-            moved += MoveObject("Hiding_Wardrobe_East", new Vector3(-5.675f, 3.2f, 0.4f),
-                Quaternion.Euler(0f, 90f, 0f));
-
-            moved += AlignNavigation();
-
-            return moved;
-        }
-
-        private static int AlignNavigation()
-        {
-            GameObject navigationRoot = GameObject.Find("Enemy_Navigation");
-            if (navigationRoot == null)
-            {
-                return 0;
-            }
-
-            Transform nodes = navigationRoot.transform.Find("NavNodes");
-            Transform patrol = navigationRoot.transform.Find("PatrolRoute");
-
-            int moved = 0;
-
-            if (nodes != null)
-            {
-                for (int i = 0; i < NavNodes.Length; i++)
-                {
-                    Transform node = nodes.Find("Node_" + i);
-                    if (node != null && Vector3.Distance(node.localPosition, NavNodes[i]) > 0.001f)
-                    {
-                        node.localPosition = NavNodes[i];
-                        EditorUtility.SetDirty(node);
-                        moved++;
-                    }
-                }
-            }
-
-            if (patrol != null)
-            {
-                for (int i = 0; i < PatrolNodeIndices.Length; i++)
-                {
-                    Transform point = patrol.Find("Patrol_" + i);
-                    Vector3 expected = NavNodes[PatrolNodeIndices[i]];
-
-                    if (point != null && Vector3.Distance(point.localPosition, expected) > 0.001f)
-                    {
-                        point.localPosition = expected;
-                        EditorUtility.SetDirty(point);
-                        moved++;
-                    }
-                }
-            }
+            // Wardrobes: master bedroom (north wall, facing south) and guest bedroom (west wall).
+            moved += MoveObject("Hiding_Wardrobe_West", new Vector3(-9f, UpperFloor, -7.575f), Quaternion.identity);
+            moved += MoveObject("Hiding_Wardrobe_East", new Vector3(-11.575f, UpperFloor, 4f), Quaternion.Euler(0f, 90f, 0f));
 
             return moved;
         }
@@ -676,10 +642,22 @@ namespace AshenWoods.EditorTools
                 return 0;
             }
 
+            CharacterController controller = target.GetComponent<CharacterController>();
+            bool wasEnabled = controller != null && controller.enabled;
+            if (controller != null)
+            {
+                controller.enabled = false;
+            }
+
             target.transform.position = position;
             if (rotation != null)
             {
                 target.transform.rotation = rotation.Value;
+            }
+
+            if (controller != null)
+            {
+                controller.enabled = wasEnabled;
             }
 
             if (PrefabUtility.IsPartOfPrefabInstance(target))
@@ -706,30 +684,35 @@ namespace AshenWoods.EditorTools
                 return;
             }
 
-            var report = new System.Text.StringBuilder("[House] Layout");
-            report.Append("\n  GROUND  living   x -6.0..0.2  z -2.0..1.8   crouch tunnel + iron key");
-            report.Append("\n          kitchen  x  0.4..6.0  z -2.0..1.8   pantry x 4.3..6.0 z -2.0..-0.2");
-            report.Append("\n          foyer    x -6.0..0.2  z  2.0..6.0   player start, front door");
-            report.Append("\n          hall     x  0.4..6.0  z  2.0..6.0   stairs along the south wall");
-            report.Append("\n  FIRST   study    x -6.0..0.2  z -2.0..1.8   enemy start, breaker panel");
-            report.Append("\n          bathroom x  0.4..6.0  z -2.0..1.8");
-            report.Append("\n          bedroom  x -6.0..0.2  z  2.0..6.0   wardrobe on the north wall");
-            report.Append("\n          landing  x  0.4..6.0  z  2.0..6.0   stairwell hole x 1.4..5.0 z 5.0..6.0");
-            report.Append("\n  Storey heights: ground floor top y 0.0, first floor top y 3.2, ceiling y 6.0");
+            var report = new System.Text.StringBuilder($"[House] Layout v{LayoutVersion}, 24 x 16 m, 2 m cells (north at the top)");
+            report.Append("\n  GROUND");
+            foreach (string row in GroundPlan)
+            {
+                report.Append("\n    ").Append(row);
+            }
+
+            report.Append("\n    K kitchen  P pantry  H back hall  + back stair  D dining  U utility  C corridor" +
+                          "\n    L living   F foyer   * main stair  B library  T toilet");
+            report.Append("\n  FIRST FLOOR");
+            foreach (string row in UpperPlan)
+            {
+                report.Append("\n    ").Append(row);
+            }
+
+            report.Append("\n    M master  N linen  R study  A storeroom  E corridor  G guest  O playroom  Q bathroom  W small room  h stairwell");
+            report.Append($"\n  Navigation: {NavNodes.Count} nodes, patrol of {PatrolPoints.Count} points.");
 
             PlayerMotor player = Object.FindAnyObjectByType<PlayerMotor>();
             GameObject enemy = GameObject.Find("Enemy_Patroller");
 
             if (player != null)
             {
-                report.Append($"\n  Player at ({player.transform.position.x:0.0}, {player.transform.position.y:0.0}, " +
-                              $"{player.transform.position.z:0.0})");
+                report.Append($"\n  Player at {player.transform.position}");
             }
 
             if (enemy != null)
             {
-                report.Append($"\n  Enemy at ({enemy.transform.position.x:0.0}, {enemy.transform.position.y:0.0}, " +
-                              $"{enemy.transform.position.z:0.0})");
+                report.Append($"\n  Enemy at {enemy.transform.position}");
             }
 
             Debug.Log(report.ToString(), house);
@@ -745,13 +728,23 @@ namespace AshenWoods.EditorTools
                 return;
             }
 
+            Debug.Log(BuildOverlapReport(house), house);
+        }
+
+        internal static string BuildOverlapReport(GameObject house)
+        {
             Renderer[] renderers = house.GetComponentsInChildren<Renderer>();
             var boxes = new List<Renderer>();
 
             for (int i = 0; i < renderers.Length; i++)
             {
-                // The ramp deliberately sinks its low end into the floor slab.
-                if (!renderers[i].name.Contains("Stair_Ramp"))
+                // Ramps deliberately sink their low end into the floor; treads are decoration.
+                // Dressing (models, overlays) is decoration made of overlapping parts by design.
+                string name = renderers[i].name;
+                bool dressing = renderers[i].transform.parent != null
+                                && renderers[i].GetComponentInParent<Transform>().root == house.transform.root
+                                && IsUnderDressing(renderers[i].transform, house.transform);
+                if (!dressing && !name.Contains("Stair_Ramp") && !name.Contains("_Tread_"))
                 {
                     boxes.Add(renderers[i]);
                 }
@@ -784,17 +777,16 @@ namespace AshenWoods.EditorTools
                 }
             }
 
-            if (overlaps == 0)
-            {
-                report.Append(": no overlapping boxes. Door frames, walls, floors and props all sit " +
-                              "in their own space.");
-            }
-            else
-            {
-                report.Append($"\n  {overlaps} overlapping pair(s).");
-            }
+            report.Append(overlaps == 0
+                ? $": {boxes.Count} boxes, none overlapping."
+                : $"\n  {overlaps} overlapping pair(s) among {boxes.Count} boxes.");
+            return report.ToString();
+        }
 
-            Debug.Log(report.ToString(), house);
+        private static bool IsUnderDressing(Transform transform, Transform house)
+        {
+            Transform dressing = house.Find(DressingRootName);
+            return dressing != null && transform.IsChildOf(dressing);
         }
 
         // ----------------------------------------------------------------- helpers
@@ -841,82 +833,6 @@ namespace AshenWoods.EditorTools
         {
             return EnsureBox(parent, name, new Vector3(x, (bottom + top) * 0.5f, (fromZ + toZ) * 0.5f),
                 new Vector3(Wall, top - bottom, toZ - fromZ), material);
-        }
-
-        private static int EnsureWallXOpening(
-            Transform parent, string name, float z, float fromX, float toX,
-            float bottom, float top, float openFrom, float openTo, float openBottom, float openTop,
-            Material material)
-        {
-            int added = 0;
-
-            if (openFrom > fromX + 0.001f)
-            {
-                added += EnsureBox(parent, name + "_West",
-                    new Vector3((fromX + openFrom) * 0.5f, (bottom + top) * 0.5f, z),
-                    new Vector3(openFrom - fromX, top - bottom, Wall), material);
-            }
-
-            if (toX > openTo + 0.001f)
-            {
-                added += EnsureBox(parent, name + "_East",
-                    new Vector3((openTo + toX) * 0.5f, (bottom + top) * 0.5f, z),
-                    new Vector3(toX - openTo, top - bottom, Wall), material);
-            }
-
-            if (top > openTop + 0.001f)
-            {
-                added += EnsureBox(parent, name + "_Lintel",
-                    new Vector3((openFrom + openTo) * 0.5f, (openTop + top) * 0.5f, z),
-                    new Vector3(openTo - openFrom, top - openTop, Wall), material);
-            }
-
-            if (openBottom > bottom + 0.001f)
-            {
-                added += EnsureBox(parent, name + "_Sill",
-                    new Vector3((openFrom + openTo) * 0.5f, (bottom + openBottom) * 0.5f, z),
-                    new Vector3(openTo - openFrom, openBottom - bottom, Wall), material);
-            }
-
-            return added;
-        }
-
-        private static int EnsureWallZOpening(
-            Transform parent, string name, float x, float fromZ, float toZ,
-            float bottom, float top, float openFrom, float openTo, float openBottom, float openTop,
-            Material material)
-        {
-            int added = 0;
-
-            if (openFrom > fromZ + 0.001f)
-            {
-                added += EnsureBox(parent, name + "_South",
-                    new Vector3(x, (bottom + top) * 0.5f, (fromZ + openFrom) * 0.5f),
-                    new Vector3(Wall, top - bottom, openFrom - fromZ), material);
-            }
-
-            if (toZ > openTo + 0.001f)
-            {
-                added += EnsureBox(parent, name + "_North",
-                    new Vector3(x, (bottom + top) * 0.5f, (openTo + toZ) * 0.5f),
-                    new Vector3(Wall, top - bottom, toZ - openTo), material);
-            }
-
-            if (top > openTop + 0.001f)
-            {
-                added += EnsureBox(parent, name + "_Lintel",
-                    new Vector3(x, (openTop + top) * 0.5f, (openFrom + openTo) * 0.5f),
-                    new Vector3(Wall, top - openTop, openTo - openFrom), material);
-            }
-
-            if (openBottom > bottom + 0.001f)
-            {
-                added += EnsureBox(parent, name + "_Sill",
-                    new Vector3(x, (bottom + openBottom) * 0.5f, (openFrom + openTo) * 0.5f),
-                    new Vector3(Wall, openBottom - bottom, openTo - openFrom), material);
-            }
-
-            return added;
         }
 
         private static void AddSceneToBuildSettings(string path)

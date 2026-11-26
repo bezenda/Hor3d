@@ -50,10 +50,10 @@ namespace AshenWoods.Interaction
         [SerializeField] private bool noisyWhenClosing = true;
 
         [Header("Text")]
-        [SerializeField] private string openPrompt = "Open door";
-        [SerializeField] private string closePrompt = "Close door";
-        [SerializeField] private string lockedPrompt = "Locked (needs an iron key)";
-        [SerializeField] private string lockedMessage = "Locked. It needs an iron key.";
+        [SerializeField] private string openPrompt = "Открыть дверь";
+        [SerializeField] private string closePrompt = "Закрыть дверь";
+        [SerializeField] private string lockedPrompt = "Заперто (нужен железный ключ)";
+        [SerializeField] private string lockedMessage = "Заперто. Нужен железный ключ.";
 
         public DoorState State { get; private set; } = DoorState.Closed;
         public bool IsLocked => isLocked;
@@ -74,6 +74,7 @@ namespace AshenWoods.Interaction
 
             closedRotation = hinge.localRotation;
             openRotation = closedRotation * Quaternion.Euler(0f, openAngle, 0f);
+            panel = FindPanel();
 
             if (startsOpen)
             {
@@ -91,7 +92,7 @@ namespace AshenWoods.Interaction
         {
             if (isLocked)
             {
-                return HasKey(actor) ? openPrompt + " (unlock)" : lockedPrompt;
+                return HasKey(actor) ? openPrompt + " (отпереть)" : lockedPrompt;
             }
 
             return State == DoorState.Open ? closePrompt : openPrompt;
@@ -122,8 +123,132 @@ namespace AshenWoods.Interaction
                 return null;
             }
 
-            BeginOpen();
+            Component user = actor as Component;
+            BeginOpen(user != null ? user.transform.position : (Vector3?)null);
             return null;
+        }
+
+        /// <summary>
+        /// Opens a closed, unlocked door away from <paramref name="from"/> (the enemy walking through it).
+        /// False when it is locked or not closed.
+        /// </summary>
+        public bool OpenFrom(Vector3 from)
+        {
+            if (isLocked || State != DoorState.Closed)
+            {
+                return false;
+            }
+
+            BeginOpen(from);
+            return true;
+        }
+
+        // ------------------------------------------------------------ swing side
+
+        [Tooltip("Swing away from whoever opens it (either way through the frame). Off = always the authored openAngle.")]
+        [SerializeField] private bool swingAwayFromUser = true;
+
+        private BoxCollider panel;
+        private static readonly Collider[] Overlaps = new Collider[32];
+
+        /// <summary>The biggest solid box on the leaf: what has to fit where the door swings to.</summary>
+        private BoxCollider FindPanel()
+        {
+            BoxCollider best = null;
+            float bestSize = 0f;
+            foreach (BoxCollider box in hinge.GetComponentsInChildren<BoxCollider>(true))
+            {
+                if (box.isTrigger)
+                {
+                    continue;
+                }
+
+                Vector3 size = Vector3.Scale(box.size, box.transform.lossyScale);
+                float area = Mathf.Abs(size.x * size.y) + Mathf.Abs(size.y * size.z) + Mathf.Abs(size.x * size.z);
+                if (area > bestSize)
+                {
+                    bestSize = area;
+                    best = box;
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// The opening angle for this push: away from the user (a door pushed from the corridor swings into the
+        /// room, from the room it swings out), unless that side is blocked and the other is clear.
+        /// </summary>
+        private float ChooseAngle(Vector3? from)
+        {
+            float magnitude = Mathf.Abs(openAngle);
+            if (!swingAwayFromUser || !from.HasValue || magnitude < 1f || panel == null)
+            {
+                return openAngle;
+            }
+
+            Vector3 pivot = hinge.position;
+            Vector3 axis = hinge.up;
+            Vector3 centre = panel.transform.TransformPoint(panel.center);
+            Vector3 arm = Vector3.ProjectOnPlane(centre - pivot, axis);
+            Vector3 towardsUser = Vector3.ProjectOnPlane(from.Value - centre, axis);
+            if (arm.sqrMagnitude < 0.0001f || towardsUser.sqrMagnitude < 0.0001f)
+            {
+                return openAngle;
+            }
+
+            // A positive turn about the hinge's up axis moves the leaf along up x arm.
+            bool positiveTowardsUser = Vector3.Dot(Vector3.Cross(axis, arm), towardsUser) > 0f;
+            float away = positiveTowardsUser ? -magnitude : magnitude;
+
+            if (!SwingBlocked(away))
+            {
+                return away;
+            }
+
+            return SwingBlocked(-away) ? away : -away;
+        }
+
+        /// <summary>
+        /// Would the leaf hit something solid half way or at the end of a swing by <paramref name="angle"/>?
+        /// Anything it already touches while closed (the frame, the wall around it) does not count, nor do
+        /// characters and loose props.
+        /// </summary>
+        private bool SwingBlocked(float angle)
+        {
+            Vector3 pivot = hinge.position;
+            Vector3 axis = hinge.up;
+            Vector3 centre = panel.transform.TransformPoint(panel.center);
+            Quaternion rotation = panel.transform.rotation;
+            Vector3 half = Vector3.Scale(panel.size, panel.transform.lossyScale) * 0.5f;
+            half = new Vector3(Mathf.Abs(half.x), Mathf.Abs(half.y), Mathf.Abs(half.z)) * 0.85f;
+
+            int closedCount = Physics.OverlapBoxNonAlloc(centre, half, Overlaps, rotation, ~0, QueryTriggerInteraction.Ignore);
+            var touching = new System.Collections.Generic.HashSet<Collider>();
+            for (int i = 0; i < closedCount; i++)
+            {
+                touching.Add(Overlaps[i]);
+            }
+
+            for (int step = 1; step <= 2; step++)
+            {
+                Quaternion turn = Quaternion.AngleAxis(angle * step * 0.5f, axis);
+                Vector3 c = pivot + turn * (centre - pivot);
+                int count = Physics.OverlapBoxNonAlloc(c, half, Overlaps, turn * rotation, ~0, QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < count; i++)
+                {
+                    Collider other = Overlaps[i];
+                    if (touching.Contains(other) || other.transform.IsChildOf(transform) || other is CharacterController
+                        || (other.attachedRigidbody != null && !other.attachedRigidbody.isKinematic))
+                    {
+                        continue;
+                    }
+
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>Opens the lock for later puzzle scripts without needing a key.</summary>
@@ -145,8 +270,13 @@ namespace AshenWoods.Interaction
                    && actor.HasKey(requiredKeyId);
         }
 
-        private void BeginOpen()
+        private void BeginOpen(Vector3? from)
         {
+            if (State == DoorState.Closed)
+            {
+                openRotation = closedRotation * Quaternion.Euler(0f, ChooseAngle(from), 0f);
+            }
+
             targetProgress = 1f;
             State = DoorState.Opening;
             EmitNoise(openNoiseLoudness);

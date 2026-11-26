@@ -19,6 +19,7 @@ namespace AshenWoods.UI
         [SerializeField] private Color normalColor = new Color(0.86f, 0.82f, 0.62f, 0.9f);
         [SerializeField] private Color lowColor = new Color(0.85f, 0.25f, 0.18f, 0.95f);
         [SerializeField] private Color offColor = new Color(0.5f, 0.48f, 0.42f, 0.6f);
+        [SerializeField] private Color labelColor = new Color(0.62f, 0.61f, 0.58f, 0.9f);
 
         private void OnEnable()
         {
@@ -40,6 +41,23 @@ namespace AshenWoods.UI
             if (flashlight != null)
             {
                 flashlight.Changed -= Refresh;
+            }
+        }
+
+        /// <summary>No torch bar before the torch is found: a full battery for a torch you do not have reads as a bug.</summary>
+        private void Update()
+        {
+            if (flashlight == null || fill == null || fill.parent == null)
+            {
+                return;
+            }
+
+            GameObject bar = fill.parent.gameObject;
+            bool owned = flashlight.IsOwned;
+            if (bar.activeSelf != owned)
+            {
+                bar.SetActive(owned);
+                Refresh();
             }
         }
 
@@ -69,8 +87,8 @@ namespace AshenWoods.UI
 
             if (label != null)
             {
-                label.text = $"F  FLASHLIGHT  {Mathf.CeilToInt(flashlight.Charge * 100f)}%";
-                label.color = flashlight.IsLow ? lowColor : new Color(0.93f, 0.9f, 0.85f, 0.85f);
+                label.text = $"Фонарь {Mathf.CeilToInt(flashlight.Charge * 100f)}%";
+                label.color = flashlight.IsLow ? lowColor : labelColor;
             }
         }
     }

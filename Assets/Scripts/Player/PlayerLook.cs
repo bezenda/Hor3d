@@ -31,6 +31,13 @@ namespace AshenWoods.Player
         [Tooltip("Locks/hides the cursor while input is enabled and releases it when input is disabled.")]
         [SerializeField] private bool manageCursorLock = true;
 
+        /// <summary>Degrees per unit of look input; set from the settings menu.</summary>
+        public float Sensitivity
+        {
+            get => lookSensitivity;
+            set => lookSensitivity = Mathf.Clamp(value, 0.01f, 0.6f);
+        }
+
         private float _yaw;
         private float _pitch;
         private bool _cursorLocked;

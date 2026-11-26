@@ -56,12 +56,15 @@ namespace AshenWoods.EditorTools
         private static readonly Color TextColor = new Color(0.93f, 0.9f, 0.85f);
         private static readonly Color DimTextColor = new Color(0.62f, 0.6f, 0.56f);
 
-        /// <summary>House: on the kitchen counter, on the bedroom bed, on the bathroom floor.</summary>
+        /// <summary>House (layout v2): table tops only (Stage 11 sets the exact heights).</summary>
         private static readonly Vector3[] HouseBatteryPositions =
         {
-            new Vector3(1.4f, 0.96f, -0.6f),
-            new Vector3(-0.6f, 3.76f, 5f),
-            new Vector3(2.6f, 3.26f, 0.9f)
+            new Vector3(4.5f, 0.8f, -4.15f),    // dining table
+            new Vector3(7.55f, 0.8f, 1.95f),    // library desk
+            new Vector3(-6.05f, 0.46f, 3.7f),   // living-room coffee table
+            new Vector3(2.4f, 4f, -7.5f),       // study desk
+            new Vector3(-4.45f, 4f, 2.3f),      // guest-room desk
+            new Vector3(0.2f, 3.84f, 3.05f)     // playroom table
         };
 
         /// <summary>Legacy playground: one in the room, one in the corridor.</summary>
@@ -93,7 +96,10 @@ namespace AshenWoods.EditorTools
                         + Stage4MenuBuilder.EnsureStage4Pieces()
                         + Stage5NoiseBuilder.EnsureStage5Pieces()
                         + Stage6ObjectiveBuilder.EnsureStage6Pieces()
-                        + EnsureStage7Pieces();
+                        + EnsureStage7Pieces()
+                        + Stage8ThrowableBuilder.EnsureStage8Pieces()
+                        + Stage9PolishBuilder.EnsureStage9Pieces()
+                        + Stage10InterfaceBuilder.EnsureStage10Pieces();
 
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             Debug.Log(added > 0
@@ -136,10 +142,10 @@ namespace AshenWoods.EditorTools
             bool saved = EditorSceneManager.SaveScene(scene);
             Debug.Log($"[Batch] House updated: {added} piece(s) added or moved, saved={saved}.");
 
-            // Smoke-test the sound generator: every placeholder clip must build without throwing.
-            foreach (PlaceholderSound sound in System.Enum.GetValues(typeof(PlaceholderSound)))
+            // Smoke-test the sound bank: lists every sound with the length of one recorded variant.
+            foreach (GameSound sound in System.Enum.GetValues(typeof(GameSound)))
             {
-                AudioClip clip = ProceduralAudio.Get(sound);
+                AudioClip clip = SoundBank.Get(sound);
                 Debug.Log($"[Batch] Sound {sound}: {(clip != null ? clip.length.ToString("0.00") + " s" : "MISSING")}.");
             }
 
@@ -170,9 +176,52 @@ namespace AshenWoods.EditorTools
             added += EnsureNoiseSounds();
             added += EnsureEnemyFootsteps();
             UpdatePauseControls(uiRoot.transform);
+            ApplyQuieterMix();
 
             AssetDatabase.SaveAssets();
             return added;
+        }
+
+        /// <summary>
+        /// The first mix was far too loud (the heartbeat especially). Serialized values beat code
+        /// defaults, so the new defaults are pushed onto existing components here - but only
+        /// where a field still holds the old default, so a value tuned by hand is kept.
+        /// </summary>
+        private static void ApplyQuieterMix()
+        {
+            foreach (ThreatFeedback threat in Object.FindObjectsByType<ThreatFeedback>())
+            {
+                Migrate(threat, "heartbeatVolume", 0.9f, 0.3f);
+                Migrate(threat, "heartbeatThreshold", 0.18f, 0.3f);
+                Migrate(threat, "noticeVolume", 0.55f, 0.3f);
+                Migrate(threat, "stingVolume", 0.8f, 0.45f);
+            }
+
+            foreach (EnemyFootstepAudio steps in Object.FindObjectsByType<EnemyFootstepAudio>())
+            {
+                Migrate(steps, "walkVolume", 0.65f, 0.4f);
+                Migrate(steps, "chaseVolume", 1f, 0.6f);
+            }
+
+            foreach (NoiseSoundPlayer player in Object.FindObjectsByType<NoiseSoundPlayer>())
+            {
+                Migrate(player, "masterVolume", 0.85f, 0.6f);
+                Migrate(player, "footstepVolume", 0.35f, 0.25f);
+                Migrate(player, "doorVolume", 0.8f, 0.55f);
+                Migrate(player, "itemVolume", 0.55f, 0.45f);
+                Migrate(player, "hidingVolume", 0.6f, 0.45f);
+                Migrate(player, "mechanismVolume", 0.8f, 0.6f);
+                Migrate(player, "impactVolume", 0.9f, 0.75f);
+            }
+        }
+
+        private static void Migrate(Object target, string field, float oldDefault, float newDefault)
+        {
+            float current = Stage1PlaygroundBuilder.GetFloat(target, field, float.NaN);
+            if (!float.IsNaN(current) && Mathf.Abs(current - oldDefault) < 0.0001f)
+            {
+                Stage1PlaygroundBuilder.SetFloat(target, field, newDefault);
+            }
         }
 
         // ------------------------------------------------------------------- flow
@@ -194,15 +243,15 @@ namespace AshenWoods.EditorTools
             if (canvasObject.transform.Find(DeathPanelName) == null)
             {
                 GameObject panel = Stage4MenuBuilder.CreateOverlay(canvasObject.transform, DeathPanelName);
-                Stage4MenuBuilder.CreateText(panel.transform, "Title", "YOU WERE CAUGHT",
+                Stage4MenuBuilder.CreateText(panel.transform, "Title", "ТЕБЯ ПОЙМАЛИ",
                     new Vector2(0f, 220f), new Vector2(1200f, 120f), 78, TitleRed);
-                Stage4MenuBuilder.CreateText(panel.transform, "Subtitle", "The house keeps what it finds.",
+                Stage4MenuBuilder.CreateText(panel.transform, "Subtitle", "Оно охотится на звук. Иди шагом, пригибайся и бросай предметы, чтобы увести его.",
                     new Vector2(0f, 145f), new Vector2(1000f, 50f), 30, DimTextColor);
-                Stage4MenuBuilder.CreateButton(panel.transform, RetryButtonName, "Try Again",
+                Stage4MenuBuilder.CreateButton(panel.transform, RetryButtonName, "Попробовать снова",
                     new Vector2(0f, 30f), new Vector2(360f, 70f));
                 Stage4MenuBuilder.CreateButton(panel.transform, QuitButtonName, "Quit",
                     new Vector2(0f, -60f), new Vector2(360f, 70f));
-                Stage4MenuBuilder.CreateText(panel.transform, "Hint", "R  -  Try again",
+                Stage4MenuBuilder.CreateText(panel.transform, "Hint", "R — попробовать снова",
                     new Vector2(0f, -160f), new Vector2(900f, 50f), 26, DimTextColor);
                 panel.SetActive(false);
                 added++;
@@ -211,18 +260,18 @@ namespace AshenWoods.EditorTools
             if (canvasObject.transform.Find(CompletedPanelName) == null)
             {
                 GameObject panel = Stage4MenuBuilder.CreateOverlay(canvasObject.transform, CompletedPanelName);
-                Stage4MenuBuilder.CreateText(panel.transform, "Title", "YOU ESCAPED",
+                Stage4MenuBuilder.CreateText(panel.transform, "Title", "НА СВОБОДЕ",
                     new Vector2(0f, 230f), new Vector2(1200f, 120f), 78, TitleGreen);
                 Stage4MenuBuilder.CreateText(panel.transform, "Subtitle",
-                    "The trees close behind you. Nothing follows. For now.",
+                    "Лес смыкается за спиной. Погони нет. Пока что.",
                     new Vector2(0f, 155f), new Vector2(1200f, 50f), 30, DimTextColor);
                 Stage4MenuBuilder.CreateText(panel.transform, CompletedDetailName, string.Empty,
                     new Vector2(0f, 95f), new Vector2(1000f, 50f), 32, TextColor);
-                Stage4MenuBuilder.CreateButton(panel.transform, RestartButtonName, "Play Again",
+                Stage4MenuBuilder.CreateButton(panel.transform, RestartButtonName, "Играть снова",
                     new Vector2(0f, -10f), new Vector2(360f, 70f));
                 Stage4MenuBuilder.CreateButton(panel.transform, QuitButtonName, "Quit",
                     new Vector2(0f, -100f), new Vector2(360f, 70f));
-                Stage4MenuBuilder.CreateText(panel.transform, "Hint", "R  -  Play again",
+                Stage4MenuBuilder.CreateText(panel.transform, "Hint", "R — играть снова",
                     new Vector2(0f, -200f), new Vector2(900f, 50f), 26, DimTextColor);
                 panel.SetActive(false);
                 added++;
@@ -338,7 +387,7 @@ namespace AshenWoods.EditorTools
             fillRect.offsetMin = new Vector2(2f, 2f);
             fillRect.offsetMax = new Vector2(-2f, -2f);
 
-            Text label = Stage4MenuBuilder.CreateText(barObject.transform, "Label", "F  FLASHLIGHT",
+            Text label = Stage4MenuBuilder.CreateText(barObject.transform, "Label", "F  ФОНАРЬ",
                 Vector2.zero, new Vector2(400f, 30f), 20, TextColor);
             label.alignment = TextAnchor.LowerLeft;
             RectTransform labelRect = label.rectTransform;
@@ -376,11 +425,12 @@ namespace AshenWoods.EditorTools
 
                 Light beam = beamObject.AddComponent<Light>();
                 beam.type = LightType.Spot;
-                beam.color = new Color(1f, 0.94f, 0.8f);
-                beam.intensity = 4.5f;
-                beam.range = 16f;
-                beam.spotAngle = 60f;
-                beam.innerSpotAngle = 30f;
+                // Same values Stage 9 tunes an existing torch to.
+                beam.color = new Color(1f, 0.95f, 0.86f);
+                beam.intensity = 48f;
+                beam.range = 30f;
+                beam.spotAngle = 58f;
+                beam.innerSpotAngle = 20f;
                 beam.shadows = LightShadows.Soft;
                 beam.enabled = false;
 
@@ -486,7 +536,8 @@ namespace AshenWoods.EditorTools
             {
                 if (light.type == LightType.Directional
                     || light.GetComponentInParent<PlayerMotor>() != null
-                    || light.GetComponentInParent<EnemyBrain>() != null)
+                    || light.GetComponentInParent<EnemyBrain>() != null
+                    || AshenWoods.World.IndependentLight.Covers(light))
                 {
                     continue;
                 }

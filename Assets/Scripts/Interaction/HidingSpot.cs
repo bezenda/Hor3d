@@ -18,9 +18,17 @@ namespace AshenWoods.Interaction
                  "The player root sits at the feet, so put it on the floor.")]
         [SerializeField] private Transform hidePoint;
 
+        [Tooltip("Camera height above the hide point while inside, in metres. 0 keeps the " +
+                 "current height (a wardrobe); a bed uses a few centimetres so you peek out " +
+                 "from under the mattress.")]
+        [SerializeField, Min(0f)] private float eyeHeight;
+
         [Header("Text")]
-        [SerializeField] private string enterPrompt = "Hide";
-        [SerializeField] private string exitPrompt = "Leave hiding place";
+        [SerializeField] private string enterPrompt = "Спрятаться";
+        [SerializeField] private string exitPrompt = "Вылезти";
+
+        /// <summary>Camera height while hidden; 0 means "leave it as it is".</summary>
+        public float EyeHeight => eyeHeight;
 
         /// <summary>Whoever is currently inside, or null.</summary>
         public PlayerHidingController Occupant { get; private set; }

@@ -11,12 +11,12 @@ namespace AshenWoods.Interaction
     public sealed class BatteryPickup : MonoBehaviour, IInteractable
     {
         [Tooltip("Charge added, as a fraction of a full battery.")]
-        [SerializeField, Range(0.05f, 1f)] private float charge = 0.45f;
+        [SerializeField, Range(0.05f, 1f)] private float charge = 0.3f;
 
-        [SerializeField] private string prompt = "Take battery";
-        [SerializeField] private string takenMessage = "Fresh battery. The flashlight will last a while longer.";
-        [SerializeField] private string fullMessage = "The flashlight is already fully charged.";
-        [SerializeField] private string noReceiverMessage = "Nothing to put a battery in.";
+        [SerializeField] private string prompt = "Взять батарейку";
+        [SerializeField] private string takenMessage = "Свежая батарейка — фонарь продержится дольше.";
+        [SerializeField] private string fullMessage = "Фонарь и так полностью заряжен.";
+        [SerializeField] private string noReceiverMessage = "Некуда вставить батарейку.";
 
         [Header("Noise")]
         [Tooltip("Loudness reported when the battery is taken. 0 makes it silent.")]
@@ -45,6 +45,7 @@ namespace AshenWoods.Interaction
 
             NoiseSystem.Emit(transform.position, NoiseCategory.Item, pickupNoiseLoudness, this);
             GameLog.Info($"[Battery] Took {name} (+{charge:P0}).", this);
+            AshenWoods.World.PickupLedger.Take(gameObject);
             Destroy(gameObject);
             return takenMessage;
         }

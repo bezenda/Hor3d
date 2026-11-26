@@ -30,10 +30,26 @@ namespace AshenWoods.Enemy
         bool IsOutOfPlay { get; }
 
         /// <summary>
+        /// How easy the target is to make out right now, 0..1: 1 with a light on or running,
+        /// less while it keeps low and dark. Enemies notice a dim target more slowly; it never
+        /// makes the target invisible.
+        /// </summary>
+        float Visibility { get; }
+
+        /// <summary>True while the target carries a lit torch. Unlit, enemies see a third as far.</summary>
+        bool IsLit { get; }
+
+        /// <summary>
         /// Where an enemy has to stand to reach the target. Normally the target's own position;
         /// while hidden it is the spot in front of the hiding place, which is walkable.
         /// </summary>
         Vector3 ApproachPoint { get; }
+
+        /// <summary>
+        /// True while the target is hidden and breathing normally (or gasping): an enemy right next to the hiding
+        /// place hears it. Holding the breath makes it false.
+        /// </summary>
+        bool IsBreathAudible { get; }
 
         /// <summary>
         /// Called once when an enemy reaches the target. A hidden target is pulled out first.

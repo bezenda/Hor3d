@@ -16,6 +16,11 @@ namespace AshenWoods.Interaction
         [Tooltip("Panel this switch belongs to. Falls back to the controller on a parent object.")]
         [SerializeField] private PuzzleController controller;
 
+        [Tooltip("Name painted on it (a valve letter); a schematic note spells the order with these.")]
+        [SerializeField] private string label = "";
+
+        public string Label => string.IsNullOrEmpty(label) ? name : label;
+
         [Header("State")]
         [Tooltip("Start the scene with this switch already on.")]
         [SerializeField] private bool startsOn;
@@ -34,10 +39,10 @@ namespace AshenWoods.Interaction
         [SerializeField] private float flipDegreesPerSecond = 260f;
 
         [Header("Text")]
-        [SerializeField] private string switchOnPrompt = "Switch on";
-        [SerializeField] private string switchOffPrompt = "Switch off";
-        [SerializeField] private string switchedOnMessage = "The switch clunks up. Something hums.";
-        [SerializeField] private string switchedOffMessage = "The switch clunks back down.";
+        [SerializeField] private string switchOnPrompt = "Включить";
+        [SerializeField] private string switchOffPrompt = "Выключить";
+        [SerializeField] private string switchedOnMessage = "Рубильник с лязгом встаёт на место. Где-то загудело.";
+        [SerializeField] private string switchedOffMessage = "Рубильник с лязгом падает вниз.";
 
         [Header("Noise")]
         [Tooltip("Loudness reported when the switch is flipped. 0 makes it silent.")]
@@ -49,7 +54,7 @@ namespace AshenWoods.Interaction
         public bool IsOn { get; private set; }
 
         /// <summary>Solved panels stop offering switches, so the prompt never lies.</summary>
-        public bool IsAvailable => controller == null || !controller.IsSolved;
+        public bool IsAvailable => controller == null || (!controller.IsSolved && !(controller.Ordered && IsOn));
 
         private void Awake()
         {
@@ -82,7 +87,7 @@ namespace AshenWoods.Interaction
         {
             if (controller != null && !controller.CanOperate(actor))
             {
-                return controller.LockedPrompt;
+                return controller.BlockedPrompt;
             }
 
             return IsOn ? switchOffPrompt : switchOnPrompt;
@@ -92,7 +97,7 @@ namespace AshenWoods.Interaction
         {
             if (controller != null && !controller.CanOperate(actor))
             {
-                return controller.LockedMessage;
+                return controller.BlockedMessage;
             }
 
             IsOn = !IsOn;
@@ -102,12 +107,24 @@ namespace AshenWoods.Interaction
             NoiseSystem.Emit(transform.position, NoiseCategory.Other, flipNoiseLoudness, this);
             GameLog.Info($"[Puzzle] {name} switched {(IsOn ? "on" : "off")}.", this);
 
-            if (controller != null)
+            string said = controller != null ? controller.NotifySwitchTurned(this) : null;
+            if (!string.IsNullOrEmpty(said))
             {
-                controller.NotifySwitchChanged();
+                return said;
             }
 
             return IsOn ? switchedOnMessage : switchedOffMessage;
+        }
+
+        /// <summary>Sets the switch without a sound or a report (checkpoint restore).</summary>
+        public void SetOnSilently(bool on)
+        {
+            IsOn = on;
+            leverTarget = LeverRotation(on);
+            if (lever != null)
+            {
+                lever.localRotation = leverTarget;
+            }
         }
 
         private Quaternion LeverRotation(bool on)

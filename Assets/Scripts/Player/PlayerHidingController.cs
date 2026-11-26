@@ -29,6 +29,43 @@ namespace AshenWoods.Player
         [Tooltip("Loudness reported when climbing back out.")]
         [SerializeField, Range(0f, 1f)] private float leaveNoiseLoudness = 0.19f;
 
+        [Header("Holding Breath")]
+        [Tooltip("Seconds a full stamina bar lets the player hold their breath (hold Sprint while hidden). An enemy " +
+                 "within a few metres hears normal breathing; a held breath gets past a check (Alien: Isolation's rule).")]
+        [SerializeField, Min(0.5f)] private float holdSeconds = 7f;
+
+        [Tooltip("Seconds to get the whole bar back while breathing normally in hiding.")]
+        [SerializeField, Min(1f)] private float recoverSeconds = 14f;
+
+        [Tooltip("Running out of breath ends in a gasp this loud (a noise any enemy may hear).")]
+        [SerializeField, Range(0f, 1f)] private float gaspLoudness = 0.5f;
+
+        [SerializeField] private PlayerInputReader input;
+
+        private bool wasHolding;
+
+        /// <summary>True while hidden and holding the breath (Sprint held, breath left).</summary>
+        public bool HoldingBreath { get; private set; }
+
+        /// <summary>True while hidden and breathing where a close enemy could hear it.</summary>
+        public bool BreathAudible => IsHidden && (!HoldingBreath || (motor != null && motor.IsExhausted));
+
+        /// <summary>Breath left while hidden, 0..1 (the stamina bar).</summary>
+        public float Breath => motor != null ? motor.Stamina : 1f;
+
+        /// <summary>
+        /// Raised at the start of Leave, while the player is still inside: a listener may move the exit
+        /// (<see cref="OverrideExit"/>) - PlayerEnemyTarget does when the player bursts out into an enemy.
+        /// </summary>
+        public event System.Action<HidingSpot> Leaving;
+
+        /// <summary>Where Leave puts the player this time (only valid while handling <see cref="Leaving"/>).</summary>
+        public void OverrideExit(Vector3 position, Quaternion rotation)
+        {
+            returnPosition = position;
+            returnRotation = rotation;
+        }
+
         /// <summary>True while the player is inside a hiding spot.</summary>
         public bool IsHidden { get; private set; }
 
@@ -43,6 +80,8 @@ namespace AshenWoods.Player
 
         private Vector3 returnPosition;
         private Quaternion returnRotation;
+        private Transform cameraRootBefore; // set only while a spot changed the eye height
+        private float eyeHeightBefore;
 
         private void Awake()
         {
@@ -65,6 +104,42 @@ namespace AshenWoods.Player
             {
                 interactor = GetComponent<PlayerInteractor>();
             }
+
+            if (input == null)
+            {
+                input = GetComponent<PlayerInputReader>();
+            }
+        }
+
+        private void Update()
+        {
+            if (!IsHidden || motor == null)
+            {
+                HoldingBreath = false;
+                wasHolding = false;
+                return;
+            }
+
+            bool wants = input != null && input.InputEnabled && input.SprintHeld;
+            HoldingBreath = wants && !motor.IsExhausted;
+
+            if (HoldingBreath)
+            {
+                motor.DrainStamina(Time.deltaTime / holdSeconds);
+                if (motor.IsExhausted)
+                {
+                    // Held too long: the air comes out in a gasp.
+                    HoldingBreath = false;
+                    NoiseSystem.Emit(CurrentSpot != null ? CurrentSpot.HidePoint.position : transform.position,
+                        NoiseCategory.Hiding, gaspLoudness, this);
+                }
+            }
+            else
+            {
+                motor.RecoverStamina(Time.deltaTime / recoverSeconds);
+            }
+
+            wasHolding = HoldingBreath;
         }
 
         /// <summary>Moves the player into the spot from wherever they are standing.</summary>
@@ -101,6 +176,20 @@ namespace AshenWoods.Player
                 look.SnapToRotation(spot.HidePoint.rotation);
             }
 
+            // Under a bed the eyes go down to the floor. The motor is off while hidden, so
+            // nothing fights this; Leave puts the height back and the motor takes over again.
+            cameraRootBefore = motor != null ? motor.CameraRoot : null;
+            if (cameraRootBefore != null && spot.EyeHeight > 0f)
+            {
+                Vector3 local = cameraRootBefore.localPosition;
+                eyeHeightBefore = local.y;
+                cameraRootBefore.localPosition = new Vector3(local.x, spot.EyeHeight, local.z);
+            }
+            else
+            {
+                cameraRootBefore = null;
+            }
+
             // Keep the interact button pointing at the spot, so "leave" is always available
             // even though the inside of the wardrobe has walls around it.
             if (interactor != null)
@@ -125,6 +214,7 @@ namespace AshenWoods.Player
             }
 
             HidingSpot spot = CurrentSpot;
+            Leaving?.Invoke(spot);
 
             IsHidden = false;
             CurrentSpot = null;
@@ -146,6 +236,13 @@ namespace AshenWoods.Player
             if (look != null)
             {
                 look.SnapToRotation(returnRotation);
+            }
+
+            if (cameraRootBefore != null)
+            {
+                Vector3 local = cameraRootBefore.localPosition;
+                cameraRootBefore.localPosition = new Vector3(local.x, eyeHeightBefore, local.z);
+                cameraRootBefore = null;
             }
 
             if (controller != null)

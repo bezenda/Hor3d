@@ -149,6 +149,8 @@ namespace AshenWoods.EditorTools
                 EnemyAnimationSetup.SetLoopingPublic(clip);
             }
 
+            EnemyAnimationSetup.PrepareQueuedOneShots();
+
             report.AppendLine();
             report.Append(animationReport);
 

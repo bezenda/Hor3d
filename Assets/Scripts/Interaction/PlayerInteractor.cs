@@ -124,24 +124,133 @@ namespace AshenWoods.Interaction
             }
         }
 
+        private readonly RaycastHit[] hits = new RaycastHit[32];
+
+        /// <summary>
+        /// The nearest interactable along the view ray. Normally the first thing hit wins, so
+        /// nothing can be used through a wall. One exception: an item that sits *inside* the
+        /// solid it is hidden in - a battery moved under a table or into a desk, whose furniture
+        /// collider is one big box around it. The ray may pass through that box to the item, but
+        /// never through a solid that does not contain the item.
+        /// </summary>
         private IInteractable FindTarget()
         {
             Transform origin = viewCamera.transform;
 
             // Collide with triggers as well so small pickups can use a generous trigger box.
-            if (!Physics.Raycast(
-                    origin.position,
-                    origin.forward,
-                    out RaycastHit hit,
-                    reach,
-                    obstacleMask,
-                    QueryTriggerInteraction.Collide))
+            int count = Physics.RaycastNonAlloc(
+                origin.position,
+                origin.forward,
+                hits,
+                reach,
+                obstacleMask,
+                QueryTriggerInteraction.Collide);
+
+            if (count == 0)
+            {
+                return AssistTarget(origin);
+            }
+
+            Array.Sort(hits, 0, count, HitDistanceComparer.Instance);
+
+            Collider firstSolid = null;
+            for (int i = 0; i < count; i++)
+            {
+                Collider collider = hits[i].collider;
+
+                // Doors put their collider on the panel, so look upwards for the actual behaviour.
+                IInteractable interactable = collider.GetComponentInParent<IInteractable>();
+                if (interactable != null)
+                {
+                    if (firstSolid == null || IsInside(firstSolid, collider.bounds.center))
+                    {
+                        return interactable;
+                    }
+
+                    continue;
+                }
+
+                if (!collider.isTrigger && firstSolid == null)
+                {
+                    firstSolid = collider; // Keep looking only for items buried in this solid.
+                }
+            }
+
+            // Nothing on the exact line: allow a near miss on a small item (a note, a vial) - but only one the
+            // eye can actually see, never through the solid the ray stopped at.
+            return AssistTarget(origin, firstSolid);
+        }
+
+        [Tooltip("Radius of the forgiving aim for small items when the exact ray misses, in metres. 0 = off.")]
+        [SerializeField, Min(0f)] private float aimAssistRadius = 0.12f;
+
+        private IInteractable AssistTarget(Transform origin, Collider stoppedAt = null)
+        {
+            if (aimAssistRadius <= 0f)
             {
                 return null;
             }
 
-            // Doors put their collider on the panel, so look upwards for the actual behaviour.
-            return hit.collider.GetComponentInParent<IInteractable>();
+            float limit = reach;
+            if (stoppedAt != null)
+            {
+                Ray ray = new Ray(origin.position, origin.forward);
+                if (stoppedAt.Raycast(ray, out RaycastHit wall, reach))
+                {
+                    limit = wall.distance + aimAssistRadius;
+                }
+            }
+
+            int count = Physics.SphereCastNonAlloc(origin.position, aimAssistRadius, origin.forward, hits, limit,
+                obstacleMask, QueryTriggerInteraction.Collide);
+            Array.Sort(hits, 0, count, HitDistanceComparer.Instance);
+            for (int i = 0; i < count; i++)
+            {
+                if (hits[i].distance <= 0f)
+                {
+                    continue; // Started inside it (the player's own capsule, a trigger around them).
+                }
+
+                IInteractable interactable = hits[i].collider.GetComponentInParent<IInteractable>();
+                if (interactable == null)
+                {
+                    continue;
+                }
+
+                // Must be in plain view: nothing solid between the eye and the item.
+                Vector3 to = hits[i].collider.bounds.center - origin.position;
+                if (Physics.Raycast(origin.position, to.normalized, out RaycastHit block, to.magnitude, obstacleMask,
+                        QueryTriggerInteraction.Ignore)
+                    && block.collider.GetComponentInParent<IInteractable>() != interactable
+                    && !IsInside(block.collider, hits[i].collider.bounds.center))
+                {
+                    continue;
+                }
+
+                return interactable;
+            }
+
+            return null;
+        }
+
+        private static bool IsInside(Collider solid, Vector3 point)
+        {
+            if (solid is MeshCollider mesh && !mesh.convex)
+            {
+                return false; // ClosestPoint is undefined for concave meshes (walls, floors).
+            }
+
+            return (solid.ClosestPoint(point) - point).sqrMagnitude < 0.0001f;
+        }
+
+        private sealed class HitDistanceComparer : System.Collections.Generic.IComparer<RaycastHit>
+        {
+            public static readonly HitDistanceComparer Instance = new HitDistanceComparer();
+
+            public int Compare(RaycastHit a, RaycastHit b)
+            {
+                return a.distance.CompareTo(b.distance);
+            }
         }
 
         private void SetTarget(IInteractable target, string prompt)

@@ -111,3 +111,13 @@ InitTestScene*.unity*
 /[Aa]ssets/Models.meta
 /[Aa]ssets/Animations/
 /[Aa]ssets/Animations.meta
+
+/Builds/
+
+# Asset Store package (Unity Asset Store EULA: no redistribution) - re-import it from the Package Manager.
+/[Aa]ssets/SciFi Warehouse Kit/
+/[Aa]ssets/SciFi Warehouse Kit.meta
+
+# Unity crash-recovery scenes
+/[Aa]ssets/_Recovery/
+/[Aa]ssets/_Recovery.meta

@@ -1,27 +1,43 @@
 # Working notes for assistants
 
-Read `README.md` first — it holds the original design brief and the stage table. This file
-is the practical side: how the codebase is organised, how to verify a change, and what has
-bitten previous contributors.
+`README.md` holds the design brief and stage table (long - open it only when the task needs
+it). This file is the practical side: layout, verification, and what has bitten before.
 
 ## Ground rules
 
-- **Placeholders, except the owner's own art.** Builders only create primitives and flat
-  colour materials, and no new packages are added. The owner may drop their own models into
-  `Assets/Models/` (the enemy model goes under the enemy prefab's `Visuals`); code must keep
-  working with the placeholder capsule as well.
+- **Art: any lawfully usable licence (owner, 2026-11-11).** This is a personal project that will not be
+  redistributed, so free assets under any licence the law allows are fine (CC0, CC-BY, CC-BY-NC, free Asset
+  Store / Sketchfab downloads, ...); keep their terms (e.g. credit for CC-BY) and log every source with its
+  licence next to the asset (`Assets/Audio/CC0_SOURCES.md` for sounds, a sources/licence file per art folder).
+  No pirated or ripped content. Already in the project: Poly Haven models/textures in `Assets/Art/PolyHaven/` (licence file there), CC0 recordings
+  (Kenney, Freesound, OpenGameArt) in `Assets/Audio/` (sources in `Assets/Audio/CC0_SOURCES.md`) and
+  the Inter font in `Assets/Art/Fonts/` (OFL). The owner asked (2026-11-10) for no
+  synthesised sounds: a sound without a recording is silent and warns once. The house dressing still
+  falls back to textured boxes. The
+  owner may drop their own models into `Assets/Models/` (the enemy model goes under the
+  enemy prefab's `Visuals`); code must keep working with the placeholder capsule as well.
+- **Packages and tools are allowed (owner, 2026-11-11).** Install whatever Unity packages, Blender add-ons
+  or tools best reach the goal (e.g. Animation Rigging); when unsure whether something fits, ask first.
+  Note each new package in the README/AGENTS so the next session knows it is there.
 - **Never overwrite the enemy prefab's visuals.** `Stage3EnemyBuilder` returns an existing
   `Enemy_Patroller.prefab` untouched; keep it that way. `Ashen Woods > Enemy > Set Up Enemy
   Animations` is the only tool that edits it, and only adds Animator/EnemyAnimator wiring.
 - **Never depend on a visual.** Gameplay components reference transforms and interfaces, not
   mesh types. The `Visuals` child is always disposable.
+- **Hand edits win.** The owner rescales, moves and deletes decor by hand. `HandEditTracker`
+  (editor) marks an edited item under `House/Dressing`, `House/Atmosphere`, `Menu_Set` (and the
+  menu's camera/lights/canvas) with `HandEdited`, and records deleted items in the scene's
+  `HandEdits` ledger (`HandEditLedger`). Any builder that re-fits, re-tunes, re-lays or recreates
+  decor must check `HandEditTracker.Protected(t)` / `WasDeleted(parent, name)` first. Builders
+  never write through Undo, so their own changes are not mistaken for hand edits. Gameplay pieces
+  (doors, keys, player, enemy) are deliberately not tracked.
 - **Builders are the only way objects get authored.** Do not ask the user to hand-place
   objects in the editor if a builder can do it. Every builder must stay additive and
   idempotent: look up by name, add only what is missing, re-point references every run.
 - **Do not break an earlier stage.** Builders call forward to later stages; when adding a
   stage, chain it into the earlier menu items the same way.
-- **Never claim testing that did not happen.** There is no Unity editor in the cloud VM.
-  Report compilation-only verification and hand the user an explicit test procedure.
+- **Never claim testing that did not happen.** Say what was checked (compile, console, a
+  builder run, Play mode through MCP) and hand the user a test procedure for the rest.
 
 ## Stage map
 
@@ -34,8 +50,36 @@ bitten previous contributors.
 | 4 | Pause menu, satchel, EventSystem, buttons | `Stage4MenuBuilder` |
 | 5 | Noise bus, player noise, enemy hearing, Investigate state | `Stage5NoiseBuilder` |
 | 6 | Objective chain, breaker puzzle, front-door exit, objective HUD | `Stage6ObjectiveBuilder` |
-| - | Two-storey house scene, door openings, stairs, anchor alignment | `HouseBuilder` |
+| - | Two-storey house (layout v2: 24 x 16 m grid plan), stairs, anchor alignment | `HouseBuilder` (+ `.Layout`) |
 | 7 | Endings, restart, flashlight, batteries, house power, sound, threat cues | `Stage7FlowBuilder` |
+| 8 | Throwable bottles and cans, throwing hand, throw HUD | `Stage8ThrowableBuilder` |
+| 9 | Shadowed lamps, torch + spill, post volume, SSAO, mono clips, sound mix | `Stage9PolishBuilder` |
+| 10 | Interface style: Inter font, palette, left-column screens, HUD layout, stamina/flash bars, room caption | `Stage10InterfaceBuilder` |
+| 11 | Balance pass: stamina, flash (stun), throw arc, room atlas, batteries on tables, caught fall | `Stage11GameplayBuilder` |
+| 12 | Atmosphere: dust, fog, grade, chase volume, windows, marks, cobwebs, camera feel, enemy eyes/presence light, flash white-out | `Stage12AtmosphereBuilder` |
+| - | Title screen scene `AshWoods_Menu.unity` (primitive mansion, garden, moon), first in build settings | `MenuSceneBuilder` |
+| - | Sci-fi facility `AshWoods_Facility.unity` from the SciFi Warehouse Kit (copy of the house scene, house stripped) | `FacilityBuilder` (+ `.Shell/.Catwalks/.Dressing/.Gameplay/.Navigation/.Lab/.Halls/.Storage/.Horror/.Furnish`) |
+
+## Where the rest lives (read only what the task touches)
+
+| File | Read it before touching |
+| --- | --- |
+| `docs/agents/facility.md` | `FacilityBuilder*`, facility props/Blender scripts, quests, checkpoints, side content, facility AI/sound tuning |
+| `docs/agents/interface-text.md` | UI, HUD (eye meter, hiding HUD, tips), notes, Russian text, title screen, enemy model swap |
+| `docs/agents/enemy.md` | enemy animation, clips, Mixamo, stun/get-up, voice, motion feel |
+| `docs/agents/house-legacy.md` | house scene, legacy playground, Stage 1-12 builders' house-specific rules |
+
+Always-on rules from those files:
+- Build list = `AshWoods_Menu` + `AshWoods_Facility`. Stage builders never touch the facility (`IsLevelScene` false);
+  `FacilityBuilder` owns it. One-time facility changes are guarded by marker objects (`Name_vN`); delete a marker to re-run.
+- **All player-facing text is Russian** (natural, gender-neutral for the player, em dash "—"); title logo stays "Ashen Woods".
+  `Editor/RussianText.cs` translates builder literals at the end of every chain; never bulk-replace short literals (ids).
+- UI is restyled only in builders (`InterfaceRedesignBuilder`, runs on any scene by name), never by hand. Runtime UIs use `UiTheme`/`HudKit`.
+- Controls: WASD, Shift run / hold breath, Ctrl hold crouch, E use, F torch, Space jump, LMB hands/throw, RMB flash, J journal,
+  Tab satchel, Esc pause. Older notes naming Q/G/X/C describe the previous layout.
+- UI screenshots in Play mode: `HudShot.Take(name)` -> `Temp/Shots/<name>.png`.
+- Not in git (public repo): `Assets/Models`, `Assets/Animations` (owner art), `Assets/SciFi Warehouse Kit` (Asset Store EULA,
+  re-import from Package Manager > My Assets), `Builds/`. `Enemy_Patroller.prefab` and `AshWoods_House.unity` stay uncommitted.
 
 Each builder exposes `EnsureStageNPieces()` and a `MenuItem` that validates the open scene
 first. `Stage1PlaygroundBuilder` also holds the shared helpers: `SetObjectReference`,
@@ -44,11 +88,13 @@ first. `Stage1PlaygroundBuilder` also holds the shared helpers: `SetObjectRefere
 The menu tree is grouped, and the group is part of the interface - keep it:
 
 ```
-Ashen Woods / Level              Create Two-Storey House Scene, Build Or Update The House
-Ashen Woods / Stages             Stage 2..7 + Rewrite Objective Chain
+Ashen Woods / Level              Create Two-Storey House Scene, Build Or Update The House,
+                                 Create Main Menu Scene
+Ashen Woods / Stages             Stage 2..12 + Rewrite Objective Chain, Interface Redesign (Open Scene)
 Ashen Woods / Legacy Playground  Create Playground Scene, Add Missing Pieces, Build The East Wing
-Ashen Woods / Enemy              Set Up Enemy Animations (after dropping a model under Visuals)
+Ashen Woods / Enemy              Set Up Enemy Animations (after dropping a model under Visuals), Fix Foot Bones In Avatar
 Ashen Woods / Tuning             Apply Tuned Stealth Values
+Ashen Woods / Build              Windows Build - Next Patch / Next Minor (versioned folder + zip)
 Ashen Woods / Diagnostics        House layout, overlap check, nav graph, stealth, objectives, wing,
                                  Verbose Gameplay Logs (toggle)
 ```
@@ -84,28 +130,24 @@ shell (room, corridor, wing) must never appear inside the new building.
 - `EnemyBrain.Alertness` (0..1) and its state are all `ThreatFeedback` reads; it never sees
   the player. `IEnemyTarget.ApproachPoint` is where an enemy stands to drag a hidden player
   out (the spot in front of the wardrobe).
-- Every sound comes from `ProceduralAudio.Get(PlaceholderSound)`. Swap in recorded clips
-  there and nothing else changes. Gameplay noises become audible through
+- `Acoustics` (World) is the one rule for sound through the house: clear / wall / floor (other
+  storey, split at y 2.6). Enemy hearing (3D distance, `floorAttenuation`), the sounds the
+  player hears (gain + low-pass) and `ThreatFeedback` proximity all use it. Characters and
+  loose props are never obstacles.
+- Every sound comes from `SoundBank.Get(GameSound)`: each file in `Resources/Sounds/<GameSound>/`
+  is a variant, picked at random. Raw takes live in `Assets/Audio/Staging` and are cut/trimmed/normalised
+  by `Ashen Woods > Audio > Prepare Recorded Sounds` (SoundPrep). New `GameSound` values go at the end. Gameplay noises become audible through
   `NoiseSoundPlayer`, which listens to the same `NoiseSystem` event as the enemy's ears.
 - `GameMenuController` freezes with `Time.timeScale = 0` and disables input/interaction,
   restoring the *previous* values so pausing during the caught lock-out cannot hand control
   back early.
 
-## Verification without Unity
+## Verification
 
-`/tmp/check` holds a throwaway .NET harness that compiles the whole `Assets/Scripts` tree
-against hand-written Unity stubs. It catches typos, renamed fields and bad API calls — not
-behaviour. It is wiped when the VM is restored; rebuild it if needed:
-
-1. Install .NET 8 locally (`/tmp/dotnet`), create a `check.csproj` with `LangVersion 9`,
-   `NoWarn CS0169;CS0649;CS0414;CS0067;CS0108;CS0114`, and glob the project's `.cs` files.
-2. Add stub files under `/tmp/check` for anything the code uses: core `UnityEngine` types,
-   editor APIs, uGUI, `EventSystems`, Input System, `UnityEngine.Rendering`.
-3. Build and filter: `dotnet build check.csproj -v q 2>&1 | grep -E "error CS" | sort -u`.
-4. When a stub is missing a member, make the stub type `partial` and extend it in a new stub
-   file instead of rewriting the existing one.
-
-`write_file` cannot write to `/tmp`; use a terminal heredoc. Commands are capped at 64 KiB.
+With the editor open, use the Unity MCP tools: `refresh_unity` (compile: request), then
+`read_console` filtered to errors; run builders with `execute_menu_item` or `execute_code`.
+Read only what you need (`find_in_file`, `count`, filters) - console and scene dumps are big.
+With the editor closed, `Stage7FlowBuilder.BuildHouseInBatchMode` compiles and rebuilds.
 
 ## Gotchas
 
@@ -121,6 +163,18 @@ behaviour. It is wiped when the VM is restored; rebuild it if needed:
   `Stage7FlowBuilder.BuildHouseInBatchMode` compiles the project and rebuilds and saves the
   house scene from the command line - a real compile check, but still not a playtest.
 
+- **Unity MCP transport.** `.mcp.json` runs `mcpforunityserver` over **stdio**, so the
+  editor must be on stdio too (*Window > MCP for Unity*, Transport = Stdio, Start Session;
+  bridge on port 6400). Then the `mcp__unityMCP__*` tools work directly. If they report
+  "no Unity instances", the editor has been switched to HTTP (EditorPref
+  `MCPForUnity.UseHttpTransport`) or the session is stopped. Fallback for an HTTP editor
+  session: `Tools/UnityMcp/mcp.ps1` and `run_cs.ps1` talk to `http://127.0.0.1:8080/mcp`. Play mode only ticks while the editor
+  is focused unless `Application.runInBackground = true` is set for the session.
+- A Rigidbody carried as a child transform (a held throwable) keeps its old physics pose.
+  Set `body.position`/`rotation` (and `Physics.SyncTransforms()`) when letting go, or it
+  teleports back to where it was picked up.
+- Menu items that end in `EditorUtility.DisplayDialog` block the editor until someone clicks
+  OK; from automation call the underlying method (e.g. `EnemyModelInstaller.Run`) instead.
 - The scene has **no baked NavMesh** and the enemy deliberately does not use one. Waypoints
   are `Enemy_Navigation/NavNodes` children plus `Node_10` on the stair landing.
 - `Active Input Handling` is **Both**; buttons therefore rely on `StandaloneInputModule`.
@@ -143,42 +197,43 @@ behaviour. It is wiped when the VM is restored; rebuild it if needed:
 - Private serialized fields are written from editor code through `SetFloat` /
   `SetObjectReference` / `SetLayerMask` (SerializedObject). Plain assignment is silently
   discarded by Unity.
-- The east wing (`Stage1WingBuilder`) opens the corridor's dead end once, and only while
-  `Corridor_Wall_End` still has the position and size the Stage 1 builder gave it. If that
-  wall was edited by hand the tool leaves it alone and logs a warning; the wing is built
-  either way.
-- The front door (`Escape_FrontDoor`, Stage 6) used to sit on that dead end. Opening the
-  corridor would put a locked door across the only way to the old room, so the wing moves it
-  once to `Stage1WingBuilder.FrontDoorPosition` (the gallery's far wall). Stage 6 reads the
-  same constant, so the two files cannot drift apart. A front door anywhere else is never
-  moved.
-- The player is only moved to the boot-room start while standing on the old corridor spawn
-  (1.8, 0.05, 7.2). A hand-placed start point anywhere else is never overwritten.
-- `EnemyBrain.wakeDelaySeconds` is the start grace: the enemy patrols, but sight and
-  hearing stay off until it runs out. It is the second half of the anti-spawn-kill design -
-  keep the boot room's walls, do not rely on the delay alone.
-- Wing waypoints are appended after `Node_10` on purpose. Inserting one in the middle would
-  leave every saved `Node_N` in an existing scene pointing at the wrong place, because the
-  builder only creates missing names and never moves existing ones.
-- The house scene (`AshWoods_House.unity`) is authored by `HouseBuilder`. It never runs
-  `Stage1PlaygroundBuilder.EnsurePlaygroundInActiveScene()`, so the old room, corridor and
-  wing stay out of it. Stage objects are created by the stage builders at their original
-  coordinates and then moved onto house anchors; `MoveObject` only moves an object that is
-  not already at its anchor, so re-running is safe.
-- `HouseBuilder` needs **32** nav nodes but Stage 3 only creates 23. The builder adds
-  `Node_23`..`Node_31` itself before positioning everything, and the patrol points are
-  rewritten from `PatrolNodeIndices`. Adding a room means adding to `HouseBuilder.NavNodes`
-  (the extra nodes are created on demand); adding an index in the middle would renumber every
-  later node and break the patrol array.
-- House door openings are cut out of one wall (`_West`/`_East` + `_Lintel` + optional
-  `_Sill`), never added as a second frame. That is what removed the overlapping door frames;
-  the escape exit is 1.5 m wide in a 2.15 m hole so its own lintel fits inside the wall.
-- The house stair is one smooth ramp collider at 41.6 degrees (inside the 45 degree slope
-  limit) with collider-less drawn treads, so the navigation height probes pass over it. The
-  first-floor stairwell is a real hole: three landing slabs around x 1.4..5.0, z 5.0..6.0.
-  Rails sit on the hole's north and west edges and stop at x 5.0 so the stairs can be left.
-- `Diagnostics > Log House Overlap Check` compares every renderer bound under `House` and
-  ignores the stair ramp, whose low end is intentionally sunk into the floor slab.
+- `Mathf.SmoothStep(from, to, t)` is an interpolation, not GLSL smoothstep; texture code uses
+  `AtmosphereAssets.Step`. Lit transparent materials need `_BlendModePreserveSpecular = 0`, or URP
+  premultiplies and a dark stain glows.
+- `CameraFeel` (order 900) offsets the camera's local pose; `CaughtCameraFall` (order 1000) owns
+  the camera once the run is over. `FlashScreenEffect` dips `AudioListener.volume` and always
+  restores it to `GameSettings.Volume`.
+- Doors (2026-11-14): `Door` swings away from whoever opens it (`swingAwayFromUser`, the authored `openAngle` sign is
+  only the fallback), unless that side's swing is blocked (`SwingBlocked`: leaf box half way and at the end, ignoring
+  what it touches when closed, characters and loose rigidbodies). The enemy calls `Door.OpenFrom(position)`.
+- Heavy items (2026-11-14): a heavy `KeyPickup` is switched off, not destroyed, and listed in `HeavyCarry` (added to
+  the player at run time); X / d-pad down puts the last one down in front (key removed, `PickupLedger.Drop` records
+  the pose; a checkpoint reload moves it there, carried ones are switched off and handed back to `HeavyCarry`).
+- Title screen settings (2026-11-14): `MenuSceneBuilder.EnsureSettingsPanel` builds `Menu_Canvas/SettingsPanel` with
+  the same `Row_*` names (Difficulty + `Stage4MenuBuilder.SettingsRows`) so `SettingsMenu` drives it;
+  `MainMenuController` hides `titleOnly` while it is open, Esc closes it. `GameSettings.ApplyView` sets FOV only
+  when a `PlayerLook` exists (the menu camera keeps its lens).
+- Throws leave from the crosshair line (`PlayerThrower.GetLaunch`), not the carrying hand;
+  `ThrowTrajectory` simulates the same launch to draw the arc.
+
+## Player builds (owner, 2026-11-12)
+
+Build only through `Ashen Woods > Build > Windows Build - Next Patch / Next Minor` (`VersionedBuild.Build(minor)`;
+from automation call it directly in `execute_code`, ~80 s; `delayCall` never fires while the editor is unfocused). Every build gets a new
+Semantic Versioning 2.0.0 number (0.y.z while in development: patch per build, minor when a feature lands),
+written to `PlayerSettings.bundleVersion`, and its own folder + zip: `Builds/AshenWoods_<version>/Ashen Woods.exe`,
+`Builds/AshenWoods_<version>.zip` (without `*_DoNotShip`). Every build ships `CHANGELOG.txt` (project root, Russian,
+short player-facing bullets): write the changes under `== Не выпущено ==` before building - the build refuses an
+empty section, then renames it to `== <version> - <date> ==` and copies the file into the folder and zip.
+Windows graphics APIs are **Direct3D11 first, Direct3D12 second** (2026-11-13): a friend's GTX 1650 (driver 516.56)
+crashed every run in Unity 6.4's DX12 backend (`D3D12ScratchAllocator::DestroyScratch` <- `GfxDeviceD3D12::QueueExecute`,
+null read), in the menu or right after the level loaded. Do not put DX12 back first. To read a player crash: the
+friend's `Player.log` + `crash.dmp`; symbolize with dbghelp against
+`<Unity>/Editor/Data/PlaybackEngines/windowsstandalonesupport/Variations/win64_player_nondevelopment_mono/UnityPlayer_Win64_player_mono_x64.pdb`
+(load UnityPlayer.dll at the base address from the log).
+Never build into an existing folder: an earlier build
+into `AshenWoods_Test` (exe `AshenWoods.exe`) left two exes side by side. The pre-versioning builds were
+removed on 2026-11-12; `Builds` holds only versioned folders and their zips.
 
 ## Git
 

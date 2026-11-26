@@ -158,7 +158,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AshenWoods.Interaction.KeyPickup
   keyId: crowbar
-  displayName: crowbar
+  displayName: "\u043B\u043E\u043C"
+  heavy: 0
+  takenMessage: 
   visual: {fileID: 7283354891943515633}
   spinDegreesPerSecond: 45
   bobHeight: 0.04

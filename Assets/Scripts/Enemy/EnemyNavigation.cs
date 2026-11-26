@@ -40,6 +40,11 @@ namespace AshenWoods.Enemy
                  "the player's body never cuts the graph or blocks a straight run.")]
         [SerializeField] private LayerMask obstructionMask = ~0;
 
+        [Tooltip("Big graphs (a node every 2 m over a whole complex): only nodes within this many " +
+                 "metres are tried as the start and the end of a route, nearest first, and a shortcut " +
+                 "never skips further ahead than this. 0 = no limit (small graphs).")]
+        [SerializeField, Min(0f)] private float nodeSearchRadius;
+
         [Header("Walkability Rays")]
         [Tooltip("Heights above a node that are tested along every link. The low ray rejects " +
                  "crates and steps, the high ray rejects low ceilings the enemy cannot fit under.")]
@@ -65,6 +70,43 @@ namespace AshenWoods.Enemy
 
         [Tooltip("Turn rate in degrees per second while walking.")]
         [SerializeField, Range(30f, 1080f)] private float turnSpeed = 540f;
+
+        [Header("Motion feel")]
+        [Tooltip("Metres per second gained each second when speeding up. The old enemy jumped " +
+                 "from 0 to full speed in one frame, so the legs could never keep up.")]
+        [SerializeField, Min(0.5f)] private float acceleration = 7f;
+
+        [Tooltip("Metres per second lost each second when slowing down or stopping.")]
+        [SerializeField, Min(0.5f)] private float deceleration = 11f;
+
+        [Tooltip("Seconds the body takes to settle onto a new heading. Small = snappy.")]
+        [SerializeField, Range(0.02f, 0.5f)] private float turnSmoothTime = 0.12f;
+
+        [Tooltip("Fastest the body ever turns, degrees per second (the old Turn Speed of 540 " +
+                 "whipped it round 180 degrees in 0.4 s). The lower of this and Turn Speed wins.")]
+        [SerializeField, Range(60f, 720f)] private float turnRateLimit = 240f;
+
+        [Tooltip("Within this distance of a waypoint the enemy starts to bend towards the next one.")]
+        [SerializeField, Min(0f)] private float cornerBlendDistance = 1.1f;
+
+        [Tooltip("Largest angle between where the body faces and where it moves. Keeps it from " +
+                 "walking sideways while it turns.")]
+        [SerializeField, Range(0f, 90f)] private float maxSlipAngle = 35f;
+
+        [Tooltip("Facing this far off the wanted heading, the enemy slows to a third of its speed " +
+                 "(turns on the spot rather than running a wide arc).")]
+        [SerializeField, Range(30f, 180f)] private float slowTurnAngle = 110f;
+
+        private float currentSpeed;
+        private float yawVelocity;
+        private int lastMoveFrame = -1;
+        private int turnFrame = -1;
+        private Quaternion rotationBeforeTurn;
+        private float yawVelocityBeforeTurn;
+        private Quaternion climbFacing;
+
+        /// <summary>Speed the body is really moving at (after acceleration).</summary>
+        public float CurrentSpeed => currentSpeed;
 
         [Tooltip("Downward speed kept while grounded so the enemy stays glued to the floor.")]
         [SerializeField, Range(0.5f, 6f)] private float groundStickSpeed = 2f;
@@ -103,6 +145,29 @@ namespace AshenWoods.Enemy
         private int sidestepSign = 1;
 
         private string lastPlanResult = "no plan yet";
+
+        [Header("Commitment")]
+        [Tooltip("After turning onto a new way round an obstacle, keep it this long instead of "
+                 + "turning back each time the target hops to the other side.")]
+        [SerializeField, Min(0f)] private float holdCourseSeconds = 1.6f;
+        private float holdCourseRemaining;
+
+        [Header("Climbing")]
+        [Tooltip("Highest obstacle top (metres above the feet) the enemy climbs over or onto.")]
+        [SerializeField, Min(0.3f)] private float maxClimbHeight = 1.35f;
+        [Tooltip("Deepest obstacle (metres) the enemy climbs across.")]
+        [SerializeField, Min(0.3f)] private float maxClimbDepth = 3f;
+        [Tooltip("Seconds per metre of climb (plus a fixed 0.35 s).")]
+        [SerializeField, Min(0.05f)] private float climbSecondsPerMetre = 0.22f;
+        private bool climbing;
+        private Vector3 climbFrom, climbTo;
+        private float climbApex, climbElapsed, climbDuration;
+
+        /// <summary>True while climbing over or onto something.</summary>
+        public bool IsClimbing => climbing;
+
+        /// <summary>Seconds the current (or last) climb takes from start to landing.</summary>
+        public float ClimbDuration => climbDuration;
 
         /// <summary>True while there is somewhere left to walk to.</summary>
         public bool HasPath => pathIndex < path.Count;
@@ -190,7 +255,10 @@ namespace AshenWoods.Enemy
             for (int i = 0; i < nodesRoot.childCount; i++)
             {
                 Transform child = nodesRoot.GetChild(i);
-                if (child != null)
+
+                // A switched-off node is not part of the graph (the house builder switches off
+                // nodes that furniture now stands on).
+                if (child != null && child.gameObject.activeSelf)
                 {
                     found.Add(child.position);
                 }
@@ -210,8 +278,7 @@ namespace AshenWoods.Enemy
                     float distance = Vector3.Distance(nodes[a], nodes[b]);
                     if (distance > maxLinkDistance)
                     {
-                        linkFailures.Add($"{a}-{b}: {distance:0.0} m apart (limit {maxLinkDistance:0.0} m)");
-                        continue;
+                        continue; // Far pairs are the normal case (~18 000 in the house); not a failure.
                     }
 
                     if (!IsWalkable(nodes[a], nodes[b], out string blocker))
@@ -248,6 +315,17 @@ namespace AshenWoods.Enemy
             return IsWalkable(from, to, clearance, out string ignored);
         }
 
+        /// <summary>
+        /// A single centre ray with no body width. Only trusted for the last metre or so, where
+        /// brushing a wall is fine: over longer distances it let routes squeeze past corners the
+        /// 0.8 m body cannot pass (seen at the foot of the stairs, stuck for 40 s).
+        /// </summary>
+        private bool IsHairlineWalkable(Vector3 from, Vector3 to)
+        {
+            const float hairlineReach = 1.2f;
+            return FlatDistance(from, to) <= hairlineReach && IsWalkable(from, to, 0f);
+        }
+
         private bool IsWalkable(Vector3 from, Vector3 to, out string blocker)
         {
             return IsWalkable(from, to, bodyClearance, out blocker);
@@ -277,6 +355,54 @@ namespace AshenWoods.Enemy
                 if (!IsHeightClear(from + shift, to + shift, lowCheckHeight, ref blocker)
                     || !IsHeightClear(from + shift, to + shift, midCheckHeight, ref blocker)
                     || !IsHeightClear(from + shift, to + shift, highCheckHeight, ref blocker))
+                {
+                    return false;
+                }
+            }
+
+            // Clear air is not enough: a line from the hall to a point halfway up the stairs has
+            // nothing in its way *under* the ramp, and the enemy walked flat beneath the stairs
+            // towards a point over its head, pacing there while the player stood upstairs.
+            if (!HasFloorAlong(from, to))
+            {
+                blocker = "no floor under the line";
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// True when there is floor under the whole line, at the height the line expects.
+        /// The clearance rays only look for things in the way, so on their own they happily
+        /// "see" a shortcut from the top of the stairs straight across the open stairwell to a
+        /// room below - a line the enemy then tried to walk flat and jammed on the ramp's edge.
+        /// Lines between graph nodes are never checked here; only shortcuts and last legs are.
+        /// </summary>
+        private bool HasFloorAlong(Vector3 from, Vector3 to)
+        {
+            const float sampleSpacing = 0.4f;
+            const float tolerance = 0.45f;
+
+            float length = FlatDistance(from, to);
+            int samples = Mathf.CeilToInt(length / sampleSpacing);
+
+            for (int i = 1; i < samples; i++)
+            {
+                Vector3 expected = Vector3.Lerp(from, to, i / (float)samples);
+                Vector3 origin = expected + Vector3.up * (tolerance + 0.05f);
+
+                RaycastHit[] hits = Physics.RaycastAll(
+                    origin, Vector3.down, tolerance * 2f + 0.05f, obstructionMask, QueryTriggerInteraction.Ignore);
+
+                bool floor = false;
+                for (int h = 0; h < hits.Length && !floor; h++)
+                {
+                    Collider collider = hits[h].collider;
+                    floor = collider != null && (agent == null || !collider.transform.IsChildOf(agent));
+                }
+
+                if (!floor)
                 {
                     return false;
                 }
@@ -312,6 +438,11 @@ namespace AshenWoods.Enemy
                     continue; // Doors are passable in the graph; they are handled by collision.
                 }
 
+                if (collider.GetComponentInParent<ThrowableItem>() != null)
+                {
+                    continue; // A bottle on the floor must not cut a route; the body steps over it.
+                }
+
                 if (agent != null && collider.transform.IsChildOf(agent))
                 {
                     continue; // Never let the enemy's own body cut a route.
@@ -335,7 +466,11 @@ namespace AshenWoods.Enemy
 
             for (int i = 0; i < nodes.Length; i++)
             {
-                float distance = (nodes[i] - position).sqrMagnitude;
+                // Height counts four times over: a node one storey up is never "nearest" to a
+                // point on the floor below, however close it is in a straight line.
+                Vector3 offset = nodes[i] - position;
+                offset.y *= 4f;
+                float distance = offset.sqrMagnitude;
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;
@@ -347,25 +482,65 @@ namespace AshenWoods.Enemy
         }
 
         /// <summary>
+        /// The floor under a point. Noises happen wherever a bottle hits - often a wall at head
+        /// height - but the enemy needs somewhere to stand. Points with no floor within reach
+        /// below are returned unchanged.
+        /// </summary>
+        private Vector3 SnapToFloor(Vector3 position)
+        {
+            RaycastHit[] hits = Physics.RaycastAll(
+                position + Vector3.up * 0.1f, Vector3.down, 2.6f, obstructionMask, QueryTriggerInteraction.Ignore);
+
+            float best = float.PositiveInfinity;
+            Vector3 result = position;
+
+            for (int i = 0; i < hits.Length; i++)
+            {
+                Collider collider = hits[i].collider;
+                if (collider == null
+                    || (agent != null && collider.transform.IsChildOf(agent))
+                    || collider.GetComponentInParent<ThrowableItem>() != null)
+                {
+                    continue;
+                }
+
+                if (hits[i].distance < best)
+                {
+                    best = hits[i].distance;
+                    result = hits[i].point;
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Nearest node with a clear straight line to the destination. Walking to a node that
         /// cannot see the target leaves the enemy standing a few metres short of it, which
         /// looks exactly like being stuck.
         /// </summary>
         private int FindGoalNode(Vector3 position)
         {
+            if (nodeSearchRadius > 0f)
+            {
+                return FindNearbyNode(position, 4f, true);
+            }
+
             int best = -1;
             float bestDistance = float.PositiveInfinity;
 
             for (int i = 0; i < nodes.Length; i++)
             {
-                float distance = (nodes[i] - position).sqrMagnitude;
+                Vector3 offset = nodes[i] - position;
+                offset.y *= 4f; // Same rule as FindNearestNode: stay on the destination's floor.
+                float distance = offset.sqrMagnitude;
                 if (distance >= bestDistance)
                 {
                     continue;
                 }
 
                 if (!IsWalkable(nodes[i], position, bodyClearance)
-                    && !IsWalkable(nodes[i], position, 0f))
+                    && !IsHairlineWalkable(nodes[i], position))
                 {
                     continue;
                 }
@@ -377,12 +552,67 @@ namespace AshenWoods.Enemy
             return best;
         }
 
+        private readonly List<int> nearbyNodes = new List<int>();
+        private readonly List<float> nearbyDistances = new List<float>();
+
+        /// <summary>
+        /// The two searches around this one, for big graphs: only nodes within the search radius
+        /// are candidates and they are tried nearest first, so a route request costs a handful of
+        /// short rays instead of a long ray to every node that happens to come earlier in the list.
+        /// </summary>
+        private int FindNearbyNode(Vector3 position, float heightWeight, bool asGoal)
+        {
+            nearbyNodes.Clear();
+            nearbyDistances.Clear();
+            float limit = nodeSearchRadius * nodeSearchRadius;
+
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                Vector3 offset = nodes[i] - position;
+                offset.y *= heightWeight;
+                float distance = offset.sqrMagnitude;
+                if (distance > limit)
+                {
+                    continue;
+                }
+
+                int at = nearbyNodes.Count;
+                while (at > 0 && nearbyDistances[at - 1] > distance)
+                {
+                    at--;
+                }
+
+                nearbyNodes.Insert(at, i);
+                nearbyDistances.Insert(at, distance);
+            }
+
+            for (int k = 0; k < nearbyNodes.Count; k++)
+            {
+                int node = nearbyNodes[k];
+                bool walkable = asGoal
+                    ? IsWalkable(nodes[node], position, bodyClearance) || IsHairlineWalkable(nodes[node], position)
+                    : IsWalkable(position, nodes[node]);
+
+                if (walkable)
+                {
+                    return node;
+                }
+            }
+
+            return -1;
+        }
+
         /// <summary>
         /// Nearest node the enemy can reach in a straight line. Starting from a node it can
         /// only reach through a wall is what used to make the enemy walk away from the player.
         /// </summary>
         private int FindNearestReachableNode(Vector3 position)
         {
+            if (nodeSearchRadius > 0f)
+            {
+                return FindNearbyNode(position, 1f, false);
+            }
+
             int best = -1;
             float bestDistance = float.PositiveInfinity;
 
@@ -413,9 +643,18 @@ namespace AshenWoods.Enemy
         /// On failure the current route is left alone, so a bad re-plan mid-chase does not
         /// stop the enemy dead in its tracks.
         /// </summary>
-        public bool SetDestination(Vector3 worldPosition)
+        public bool SetDestination(Vector3 worldPosition) => SetDestination(worldPosition, false);
+
+        /// <summary>
+        /// Plans a route. With holdCourse, a fresh route that would turn the enemy round is
+        /// refused while it has just committed to a way round an obstacle - so a target hopping
+        /// from side to side at the end of a conveyor cannot keep it dithering.
+        /// </summary>
+        public bool SetDestination(Vector3 worldPosition, bool holdCourse)
         {
             IsStuck = false;
+            bool hadPath = HasPath && agent != null;
+            Vector3 oldHeading = hadPath ? FlatDirection(agent.position, path[pathIndex]) : Vector3.zero;
 
             if (agent == null || nodes.Length == 0)
             {
@@ -424,6 +663,7 @@ namespace AshenWoods.Enemy
             }
 
             Vector3 from = agent.position;
+            worldPosition = SnapToFloor(worldPosition);
 
             // Prefer a waypoint that can actually see the destination, so the last leg is a
             // clear run instead of stopping at the nearest waypoint and giving up.
@@ -463,8 +703,9 @@ namespace AshenWoods.Enemy
             {
                 // A hairline clearance is enough for the last few metres: the body may brush a
                 // wall, but refusing the run altogether would keep the enemy out of reach.
-                if (!IsWalkable(from, worldPosition, bodyClearance)
-                    && !IsWalkable(from, worldPosition, 0f))
+                if ((!IsWalkable(from, worldPosition, bodyClearance)
+                     && !IsHairlineWalkable(from, worldPosition))
+                    || !HasFloorAlong(from, worldPosition))
                 {
                     lastPlanResult =
                         $"no route to node {goalNode} and no straight line from node {startNode}";
@@ -473,8 +714,9 @@ namespace AshenWoods.Enemy
 
                 raw.Add(worldPosition);
             }
-            else if (IsWalkable(raw[raw.Count - 1], worldPosition, bodyClearance)
-                     || IsWalkable(raw[raw.Count - 1], worldPosition, 0f))
+            else if ((IsWalkable(raw[raw.Count - 1], worldPosition, bodyClearance)
+                      || IsHairlineWalkable(raw[raw.Count - 1], worldPosition))
+                     && HasFloorAlong(raw[raw.Count - 1], worldPosition))
             {
                 raw.Add(worldPosition);
             }
@@ -486,6 +728,22 @@ namespace AshenWoods.Enemy
             {
                 lastPlanResult = "route came out empty";
                 return false;
+            }
+
+            Vector3 newHeading = FlatDirection(from, planned[0]);
+            if (holdCourse && hadPath && oldHeading != Vector3.zero && newHeading != Vector3.zero)
+            {
+                float agreement = Vector3.Dot(oldHeading, newHeading);
+                if (holdCourseRemaining > 0f && agreement < 0.2f)
+                {
+                    lastPlanResult = "kept the current way round";
+                    return true;
+                }
+
+                if (agreement < 0.6f)
+                {
+                    holdCourseRemaining = holdCourseSeconds;
+                }
             }
 
             path.Clear();
@@ -519,9 +777,15 @@ namespace AshenWoods.Enemy
 
                 for (int candidate = raw.Count - 1; candidate > index; candidate--)
                 {
-                    bool clear = IsWalkable(cursor, raw[candidate])
-                                 || (candidate == raw.Count - 1
-                                     && IsWalkable(cursor, raw[candidate], 0f));
+                    if (nodeSearchRadius > 0f && FlatDistance(cursor, raw[candidate]) > nodeSearchRadius * 2f)
+                    {
+                        continue; // Too far ahead to be worth a long ray; closer points are tried next.
+                    }
+
+                    bool clear = (IsWalkable(cursor, raw[candidate])
+                                  || (candidate == raw.Count - 1
+                                      && IsHairlineWalkable(cursor, raw[candidate])))
+                                 && HasFloorAlong(cursor, raw[candidate]);
 
                     if (clear)
                     {
@@ -633,8 +897,18 @@ namespace AshenWoods.Enemy
         // ----------------------------------------------------------------- movement
 
         /// <summary>Walks along the current route. Does nothing once the route is finished.</summary>
+        /// <summary>Scales every move speed (a dazed enemy moves at a fraction of normal).</summary>
+        public float SpeedMultiplier { get; set; } = 1f;
+
         public void MoveAlongPath(float speed, float deltaTime)
         {
+            speed *= SpeedMultiplier;
+            holdCourseRemaining = Mathf.Max(0f, holdCourseRemaining - deltaTime);
+            if (climbing)
+            {
+                return; // Update moves the body while it climbs.
+            }
+
             if (controller == null || agent == null || !HasPath)
             {
                 return;
@@ -695,7 +969,40 @@ namespace AshenWoods.Enemy
             }
 
             Vector3 direction = new Vector3(target.x - agent.position.x, 0f, target.z - agent.position.z) / distance;
-            Vector3 motion = direction * speed;
+
+            // Bend towards the next waypoint before reaching this one: no sharp corner.
+            Vector3 heading = direction;
+            if (pathIndex + 1 < path.Count && distance < cornerBlendDistance)
+            {
+                Vector3 next = FlatDirection(target, path[pathIndex + 1]);
+                if (next != Vector3.zero)
+                {
+                    float bend = 0.5f * (1f - distance / Mathf.Max(0.01f, cornerBlendDistance));
+                    heading = Vector3.Slerp(direction, next, bend);
+                }
+            }
+
+            // Speed: ramp up and down instead of jumping, slow down for a sharp turn, and
+            // brake in time for the end of the route.
+            Vector3 facing = agent.forward;
+            facing.y = 0f;
+            facing = facing.sqrMagnitude > 0.0001f ? facing.normalized : heading;
+            float offAngle = Vector3.Angle(facing, heading);
+            float turnScale = Mathf.Lerp(1f, 0.33f, Mathf.InverseLerp(maxSlipAngle, slowTurnAngle, offAngle));
+            float wanted = speed * turnScale;
+
+            if (pathIndex == path.Count - 1)
+            {
+                wanted = Mathf.Min(wanted, Mathf.Sqrt(2f * deceleration * distance) + 0.25f);
+            }
+
+            currentSpeed = Mathf.MoveTowards(currentSpeed, wanted,
+                (wanted > currentSpeed ? acceleration : deceleration) * deltaTime);
+            lastMoveFrame = Time.frameCount;
+
+            // Move roughly where the body faces: at most maxSlipAngle off it.
+            Vector3 moveDirection = Vector3.RotateTowards(facing, heading, maxSlipAngle * Mathf.Deg2Rad, 0f);
+            Vector3 motion = moveDirection * currentSpeed;
 
             if (sidestepRemaining > 0f)
             {
@@ -703,11 +1010,12 @@ namespace AshenWoods.Enemy
 
                 Vector3 lateral = new Vector3(-direction.z, 0f, direction.x)
                                   * (sidestepSign * sidestepSpeedFactor);
-                motion += lateral * speed;
+                float sideSpeed = Mathf.Max(currentSpeed, speed * 0.5f);
+                motion += lateral * sideSpeed;
 
-                if (motion.sqrMagnitude > speed * speed)
+                if (motion.sqrMagnitude > sideSpeed * sideSpeed)
                 {
-                    motion = motion.normalized * speed;
+                    motion = motion.normalized * sideSpeed;
                 }
             }
 
@@ -719,13 +1027,17 @@ namespace AshenWoods.Enemy
             verticalVelocity = Mathf.Max(verticalVelocity + Physics.gravity.y * 2f * deltaTime, -20f);
 
             controller.Move((motion + Vector3.up * verticalVelocity) * deltaTime);
-            TurnTowards(target, deltaTime);
+            TurnTowards(agent.position + heading, deltaTime);
         }
 
-        /// <summary>Turns the enemy towards a world point. Used by chase, search and caught.</summary>
+        /// <summary>
+        /// Turns the enemy towards a world point with a smoothed turn rate (no 9-degree steps
+        /// per frame). Used by walking, chase, search and caught. When it is called twice in one
+        /// frame the last call wins, so the turn is never applied twice.
+        /// </summary>
         public void TurnTowards(Vector3 worldPoint, float deltaTime)
         {
-            if (agent == null)
+            if (agent == null || deltaTime <= 0f)
             {
                 return;
             }
@@ -738,8 +1050,63 @@ namespace AshenWoods.Enemy
                 return;
             }
 
-            Quaternion wanted = Quaternion.LookRotation(flat, Vector3.up);
-            agent.rotation = Quaternion.RotateTowards(agent.rotation, wanted, turnSpeed * deltaTime);
+            if (turnFrame == Time.frameCount)
+            {
+                agent.rotation = rotationBeforeTurn;
+                yawVelocity = yawVelocityBeforeTurn;
+            }
+            else
+            {
+                turnFrame = Time.frameCount;
+                rotationBeforeTurn = agent.rotation;
+                yawVelocityBeforeTurn = yawVelocity;
+            }
+
+            float wantedYaw = Quaternion.LookRotation(flat, Vector3.up).eulerAngles.y;
+            float yaw = Mathf.SmoothDampAngle(agent.eulerAngles.y, wantedYaw, ref yawVelocity,
+                turnSmoothTime, Mathf.Min(turnSpeed, turnRateLimit), deltaTime);
+            agent.rotation = Quaternion.Euler(0f, yaw, 0f);
+        }
+
+        /// <summary>
+        /// Nobody asked the body to walk this frame (route finished, state changed, caught):
+        /// let it run out its speed instead of stopping dead in one frame.
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (lastMoveFrame == Time.frameCount || climbing || currentSpeed <= 0.01f)
+            {
+                return;
+            }
+
+            // A hitch frame (0.3 s) must not stop the body dead in one step.
+            float deltaTime = Mathf.Min(Time.deltaTime, 0.05f);
+            currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, deceleration * 1.3f * deltaTime);
+
+            if (controller == null || !controller.enabled || agent == null || deltaTime <= 0f)
+            {
+                currentSpeed = 0f;
+                return;
+            }
+
+            Vector3 facing = agent.forward;
+            facing.y = 0f;
+            if (facing.sqrMagnitude < 0.0001f)
+            {
+                currentSpeed = 0f;
+                return;
+            }
+
+            verticalVelocity = controller.isGrounded ? -groundStickSpeed
+                : Mathf.Max(verticalVelocity + Physics.gravity.y * 2f * deltaTime, -20f);
+            controller.Move((facing.normalized * currentSpeed + Vector3.up * verticalVelocity) * deltaTime);
+        }
+
+        /// <summary>Forgets any speed the body was carrying (after a teleport or a respawn).</summary>
+        public void ResetMotion()
+        {
+            currentSpeed = 0f;
+            yawVelocity = 0f;
         }
 
         /// <summary>Forgets the current route. The enemy keeps its position.</summary>
@@ -750,6 +1117,194 @@ namespace AshenWoods.Enemy
             bestDistanceToWaypoint = float.PositiveInfinity;
             stuckTimer = 0f;
             sidestepRemaining = 0f;
+        }
+
+        // ------------------------------------------------------------------- climbing
+
+        /// <summary>
+        /// If a low obstacle (crate, conveyor, table) stands right between the enemy and the
+        /// goal, climbs over it - or onto it when the goal stands on top. Returns true when a
+        /// climb started. The route is dropped; plan again afterwards.
+        /// </summary>
+        public bool TryClimbTowards(Vector3 goal) => TryClimbTowards(goal, 0f, out _);
+
+        /// <summary>
+        /// Like TryClimbTowards, but also looks up to <paramref name="lookAhead"/> metres ahead.
+        /// When the climbable obstacle is further than arm's reach, walks straight at it
+        /// (<paramref name="approaching"/> = true) instead of following a route round it.
+        /// </summary>
+        public bool TryClimbTowards(Vector3 goal, float lookAhead, out bool approaching)
+        {
+            approaching = false;
+            if (climbing || controller == null || agent == null || SpeedMultiplier <= 0.01f)
+            {
+                return false;
+            }
+
+            Vector3 dir = FlatDirection(agent.position, goal);
+            if (dir == Vector3.zero)
+            {
+                return false;
+            }
+
+            const QueryTriggerInteraction ignore = QueryTriggerInteraction.Ignore;
+            float feet = controller.bounds.min.y;
+            float radius = controller.bounds.extents.x;
+            float reach = radius + 0.7f;
+            float goalDistance = FlatDistance(agent.position, goal);
+            float probeLength = Mathf.Min(Mathf.Max(reach, lookAhead), goalDistance);
+
+            Vector3 low = new Vector3(agent.position.x, feet + 0.35f, agent.position.z);
+            if (!Physics.Raycast(low, dir, out RaycastHit front, probeLength, obstructionMask, ignore))
+            {
+                return false; // Nothing low in the way.
+            }
+
+            // Blocked higher up too: a wall or a door, not a low obstacle.
+            Vector3 high = new Vector3(low.x, feet + maxClimbHeight + 0.25f, low.z);
+            if (Physics.Raycast(high, dir, front.distance + 1f, obstructionMask, ignore))
+            {
+                return false;
+            }
+
+            // The obstacle's top just past its front face.
+            Vector3 probe = front.point + dir * 0.2f;
+            probe.y = feet + maxClimbHeight + 0.2f;
+            if (!Physics.Raycast(probe, Vector3.down, out RaycastHit top, maxClimbHeight + 0.2f, obstructionMask, ignore))
+            {
+                return false;
+            }
+
+            float topY = top.point.y;
+            if (topY - feet < 0.3f || topY - feet > maxClimbHeight)
+            {
+                return false; // A step the controller takes anyway, or too tall.
+            }
+
+            float bodyHeight = controller.bounds.size.y;
+            Vector3 landing = Vector3.zero;
+            bool found = false;
+
+            // The goal stands on it: climb up and stop there.
+            if (Mathf.Abs(goal.y - topY) < 0.5f && goalDistance < front.distance + maxClimbDepth + 1f)
+            {
+                landing = top.point + dir * 0.35f;
+                found = HasRoomAt(landing, radius, bodyHeight);
+            }
+
+            // Otherwise look for floor at our own level on the far side.
+            for (float s = 0.4f; !found && s <= maxClimbDepth + 0.6f; s += 0.2f)
+            {
+                Vector3 down = front.point + dir * s;
+                down.y = topY + 0.4f;
+                if (!Physics.Raycast(down, Vector3.down, out RaycastHit floor, topY - feet + 1f, obstructionMask, ignore))
+                {
+                    continue;
+                }
+
+                if (floor.point.y < topY - 0.25f)
+                {
+                    if (Mathf.Abs(floor.point.y - feet) > 0.6f)
+                    {
+                        return false; // A drop, not the same floor.
+                    }
+
+                    landing = floor.point + dir * (radius + 0.1f);
+                    found = HasRoomAt(landing, radius, bodyHeight);
+                    if (!found)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+
+            if (front.distance > reach)
+            {
+                // Walk straight at it; the climb starts once it is within reach.
+                Vector3 face = front.point - dir * (radius + 0.3f);
+                face.y = agent.position.y;
+                path.Clear();
+                path.Add(face);
+                pathIndex = 0;
+                bestDistanceToWaypoint = float.PositiveInfinity;
+                stuckTimer = 0f;
+                approaching = true;
+                lastPlanResult = "heading straight for a low obstacle to climb it";
+                return false;
+            }
+
+            float feetOffset = agent.position.y - feet;
+            climbFrom = agent.position;
+            climbTo = landing + Vector3.up * feetOffset;
+            climbApex = topY + feetOffset + 0.15f;
+            climbElapsed = 0f;
+            float length = FlatDistance(climbFrom, climbTo) + Mathf.Abs(topY - feet);
+            climbDuration = 0.35f + length * climbSecondsPerMetre;
+            climbing = true;
+            controller.enabled = false;
+            Stop();
+            climbFacing = Quaternion.LookRotation(dir, Vector3.up); // Turned towards in TickClimb, not snapped.
+            currentSpeed = Mathf.Min(currentSpeed, 2f);
+            lastPlanResult = $"climbing a {topY - feet:0.00} m obstacle";
+            return true;
+        }
+
+        private void Update()
+        {
+            TickClimb(Time.deltaTime);
+        }
+
+        private bool HasRoomAt(Vector3 floorPoint, float radius, float height)
+        {
+            radius *= 0.9f;
+            Vector3 bottom = floorPoint + Vector3.up * (radius + 0.05f);
+            Vector3 topPoint = floorPoint + Vector3.up * Mathf.Max(radius + 0.06f, height - radius);
+            return !Physics.CheckCapsule(bottom, topPoint, radius, obstructionMask, QueryTriggerInteraction.Ignore);
+        }
+
+        /// <summary>Moves the body along the climb arc. True while a climb is running.</summary>
+        private bool TickClimb(float deltaTime)
+        {
+            if (!climbing)
+            {
+                return false;
+            }
+
+            climbElapsed += deltaTime * Mathf.Max(0.2f, SpeedMultiplier);
+            float t = Mathf.Clamp01(climbElapsed / climbDuration);
+
+            // Up first (hands on the edge), across, then down.
+            float rise = Mathf.Clamp01(t / 0.4f);
+            float across = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - 0.2f) / 0.6f));
+            float fall = Mathf.Clamp01((t - 0.65f) / 0.35f);
+            float y = Mathf.Lerp(climbFrom.y, climbApex, Mathf.Sin(rise * Mathf.PI * 0.5f));
+            y = Mathf.Lerp(y, climbTo.y, fall * fall);
+
+            Vector3 flat = Vector3.Lerp(climbFrom, climbTo, across);
+            agent.position = new Vector3(flat.x, y, flat.z);
+            agent.rotation = Quaternion.RotateTowards(agent.rotation, climbFacing, 600f * deltaTime);
+            yawVelocity = 0f;
+
+            if (t >= 1f)
+            {
+                climbing = false;
+                controller.enabled = true;
+                verticalVelocity = 0f;
+                Physics.SyncTransforms();
+            }
+
+            return true;
+        }
+
+        private static Vector3 FlatDirection(Vector3 from, Vector3 to)
+        {
+            Vector3 flat = new Vector3(to.x - from.x, 0f, to.z - from.z);
+            return flat.sqrMagnitude < 0.0001f ? Vector3.zero : flat.normalized;
         }
 
         private void AdvanceWaypoint()

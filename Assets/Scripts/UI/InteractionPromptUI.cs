@@ -22,6 +22,11 @@ namespace AshenWoods.UI
         [Tooltip("How long a one-off message such as \"Locked.\" stays on screen.")]
         [SerializeField] private float feedbackSeconds = 2.5f;
 
+        [Header("Key Hint")]
+        [Tooltip("Key drawn in front of every prompt, e.g. 'E   Take Iron Key'. Empty disables it.")]
+        [SerializeField] private string keyHint = "E";
+        [SerializeField] private Color keyHintColor = new Color(0.851f, 0.651f, 0.341f);
+
         private float feedbackHideTime;
 
         private void OnEnable()
@@ -71,8 +76,37 @@ namespace AshenWoods.UI
                 return;
             }
 
-            promptText.text = prompt ?? string.Empty;
-            promptText.enabled = !string.IsNullOrEmpty(promptText.text);
+            bool show = !string.IsNullOrEmpty(prompt);
+
+            // A quiet tick when the crosshair settles on something new that can be used (not on every
+            // refresh of the same prompt), and the line fades in instead of popping.
+            if (show && prompt != lastPrompt && isActiveAndEnabled && Time.timeScale > 0f)
+            {
+                AshenWoods.UI.UiSound.WorldFocus();
+                promptShownAt = Time.unscaledTime;
+            }
+
+            lastPrompt = show ? prompt : null;
+            promptText.text = !show ? string.Empty
+                : string.IsNullOrEmpty(keyHint) || !promptText.supportRichText ? prompt
+                : $"<color=#{ColorUtility.ToHtmlStringRGB(keyHintColor)}>{keyHint}</color>   {prompt}";
+            promptText.enabled = show;
+        }
+
+        private string lastPrompt;
+        private float promptShownAt = -100f;
+
+        private void LateUpdate()
+        {
+            if (promptText == null || !promptText.enabled)
+            {
+                return;
+            }
+
+            float t = Mathf.Clamp01((Time.unscaledTime - promptShownAt) / 0.14f);
+            Color color = promptText.color;
+            color.a = 1f - (1f - t) * (1f - t);
+            promptText.color = color;
         }
 
         private void OnFeedbackRaised(string message)
@@ -84,7 +118,10 @@ namespace AshenWoods.UI
 
             feedbackText.text = message;
             feedbackText.enabled = true;
-            feedbackHideTime = Time.time + feedbackSeconds;
+            // Long enough to read (owner, 2026-11-13: hints vanished too fast): at least 4 s, plus time per
+            // character, at most 10 s. A new message replaces the old one at once.
+            float readSeconds = Mathf.Clamp(1.5f + message.Length * 0.065f, Mathf.Max(4f, feedbackSeconds), 10f);
+            feedbackHideTime = Time.time + readSeconds;
         }
 
         private void HideFeedback()

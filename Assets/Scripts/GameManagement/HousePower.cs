@@ -22,16 +22,30 @@ namespace AshenWoods.GameManagement
 
         [Header("Without Power")]
         [Tooltip("Fraction of each lamp's intensity left while the power is out.")]
-        [SerializeField, Range(0f, 1f)] private float unpoweredIntensity = 0.06f;
+        [SerializeField, Range(0f, 1f)] private float unpoweredIntensity = 0.035f;
 
         [Tooltip("Ambient light while the power is out.")]
-        [SerializeField] private Color unpoweredAmbient = new Color(0.025f, 0.025f, 0.032f);
+        [SerializeField] private Color unpoweredAmbient = new Color(0.012f, 0.012f, 0.017f);
 
         [Tooltip("Every Nth lamp flickers while the power is out. 0 disables the flicker.")]
         [SerializeField, Min(0)] private int flickerEveryNth = 3;
 
         [Header("With Power")]
-        [SerializeField] private Color poweredAmbient = new Color(0.09f, 0.09f, 0.11f);
+        [Tooltip("With the power on, every Nth lamp is faulty: now and then it buzzes and stutters. 0 = none.")]
+        [SerializeField, Min(0)] private int faultyEveryNth = 4;
+
+        [Tooltip("Seconds between a faulty lamp's stutters (random in this range).")]
+        [SerializeField] private Vector2 faultyQuietSeconds = new Vector2(4f, 14f);
+
+        [SerializeField] private Color poweredAmbient = new Color(0.045f, 0.045f, 0.055f);
+
+        [Header("Reflections")]
+        [Tooltip("Environment reflection strength while the power is out. Metal surfaces are lit mostly " +
+                 "by reflections, so this is what keeps a dark metal hall dark. Below 0: left alone.")]
+        [SerializeField] private float unpoweredReflection = -1f;
+
+        [Tooltip("Environment reflection strength once the power is back. Below 0: left alone.")]
+        [SerializeField] private float poweredReflection = -1f;
 
         [Tooltip("Seconds the lamps stutter before they settle once the power is back.")]
         [SerializeField, Min(0f)] private float powerOnSeconds = 1.4f;
@@ -42,6 +56,9 @@ namespace AshenWoods.GameManagement
         private float[] authoredIntensity = new float[0];
         private float powerOnRemaining;
         private float flickerTimer;
+        private float[] faultyQuiet = new float[0];   // seconds until a faulty lamp stutters
+        private float[] faultyBurst = new float[0];   // seconds of stutter left
+        private float faultyStep;
 
         private void Awake()
         {
@@ -56,6 +73,13 @@ namespace AshenWoods.GameManagement
             for (int i = 0; i < lamps.Count; i++)
             {
                 authoredIntensity[i] = lamps[i].intensity;
+            }
+
+            faultyQuiet = new float[lamps.Count];
+            faultyBurst = new float[lamps.Count];
+            for (int i = 0; i < faultyQuiet.Length; i++)
+            {
+                faultyQuiet[i] = Random.Range(1f, Mathf.Max(1f, faultyQuietSeconds.y));
             }
         }
 
@@ -76,6 +100,10 @@ namespace AshenWoods.GameManagement
 
             // Ambient light is a scene setting: put it back so edit mode never stays black.
             RenderSettings.ambientLight = poweredAmbient;
+            if (poweredReflection >= 0f)
+            {
+                RenderSettings.reflectionIntensity = poweredReflection;
+            }
         }
 
         private void Start()
@@ -89,7 +117,75 @@ namespace AshenWoods.GameManagement
             SetPowered(false, false);
         }
 
+        [Tooltip("Lamps within this many metres of an enemy buzz and dip - you see it coming before you see it. 0 = off.")]
+        [SerializeField, Min(0f)] private float disturbRange = 8f;
+
+        private float disturbStep;
+        private bool[] disturbed;
+
         private void Update()
+        {
+            TickPower();
+            if (powerOnRemaining <= 0f)
+            {
+                TickDisturbance(Time.deltaTime);
+            }
+        }
+
+        private void TickDisturbance(float deltaTime)
+        {
+            if (disturbRange <= 0f || lamps.Count == 0)
+            {
+                return;
+            }
+
+            disturbStep -= deltaTime;
+            if (disturbStep > 0f)
+            {
+                return;
+            }
+
+            disturbStep = Random.Range(0.05f, 0.14f);
+            if (disturbed == null || disturbed.Length != lamps.Count)
+            {
+                disturbed = new bool[lamps.Count];
+            }
+
+            float baseScale = IsPowered ? 1f : unpoweredIntensity;
+            float range = disturbRange * disturbRange;
+            for (int i = 0; i < lamps.Count; i++)
+            {
+                Light lamp = lamps[i];
+                if (lamp == null || !lamp.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                bool near = false;
+                foreach (AshenWoods.Enemy.EnemyBrain enemy in AshenWoods.Enemy.EnemyBrain.Active)
+                {
+                    if (enemy != null && !enemy.IsStunned
+                        && (enemy.transform.position - lamp.transform.position).sqrMagnitude < range)
+                    {
+                        near = true;
+                        break;
+                    }
+                }
+
+                if (near)
+                {
+                    lamp.intensity = authoredIntensity[i] * baseScale * (Random.value > 0.55f ? Random.Range(0.05f, 0.5f) : 1f);
+                    disturbed[i] = true;
+                }
+                else if (disturbed[i])
+                {
+                    lamp.intensity = authoredIntensity[i] * baseScale;
+                    disturbed[i] = false;
+                }
+            }
+        }
+
+        private void TickPower()
         {
             if (powerOnRemaining > 0f)
             {
@@ -106,7 +202,13 @@ namespace AshenWoods.GameManagement
                 return;
             }
 
-            if (IsPowered || flickerEveryNth <= 0)
+            if (IsPowered)
+            {
+                TickFaultyLamps(Time.deltaTime);
+                return;
+            }
+
+            if (flickerEveryNth <= 0)
             {
                 return;
             }
@@ -129,6 +231,56 @@ namespace AshenWoods.GameManagement
             }
         }
 
+        /// <summary>
+        /// Living light: a few lamps are faulty even with the power on. Most of the time they
+        /// burn steadily; every few seconds one buzzes through a short burst of dips.
+        /// </summary>
+        private void TickFaultyLamps(float deltaTime)
+        {
+            if (faultyEveryNth <= 0)
+            {
+                return;
+            }
+
+            faultyStep -= deltaTime;
+            bool step = faultyStep <= 0f;
+            if (step)
+            {
+                faultyStep = Random.Range(0.03f, 0.09f);
+            }
+
+            for (int i = 0; i < lamps.Count; i += faultyEveryNth)
+            {
+                Light lamp = lamps[i];
+                if (lamp == null)
+                {
+                    continue;
+                }
+
+                if (faultyBurst[i] > 0f)
+                {
+                    faultyBurst[i] -= deltaTime;
+                    if (faultyBurst[i] <= 0f)
+                    {
+                        lamp.intensity = authoredIntensity[i];
+                        faultyQuiet[i] = Random.Range(faultyQuietSeconds.x, Mathf.Max(faultyQuietSeconds.x, faultyQuietSeconds.y));
+                    }
+                    else if (step)
+                    {
+                        lamp.intensity = authoredIntensity[i] * (Random.value > 0.45f ? Random.Range(0.04f, 0.35f) : 1f);
+                    }
+
+                    continue;
+                }
+
+                faultyQuiet[i] -= deltaTime;
+                if (faultyQuiet[i] <= 0f)
+                {
+                    faultyBurst[i] = Random.Range(0.25f, 0.9f);
+                }
+            }
+        }
+
         private void OnBreakerSolved()
         {
             SetPowered(true, true);
@@ -138,6 +290,11 @@ namespace AshenWoods.GameManagement
         {
             IsPowered = powered;
             RenderSettings.ambientLight = powered ? poweredAmbient : unpoweredAmbient;
+            float reflection = powered ? poweredReflection : unpoweredReflection;
+            if (reflection >= 0f)
+            {
+                RenderSettings.reflectionIntensity = reflection;
+            }
 
             if (powered && animate && powerOnSeconds > 0f)
             {

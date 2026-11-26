@@ -1,13 +1,16 @@
 # Ashen Woods
 
 An original first-person survival horror prototype in Unity, built in small stages.
-Placeholder primitives only: no external models, textures or paid packages until the
-gameplay is complete.
+Art: free assets under any lawful licence (Poly Haven, SciFi Warehouse Kit, Mixamo, CC0 sounds), Blender-made
+props, and the owner's own enemy model (kept out of git). Sources are logged next to each asset folder.
 
-- **Unity:** 6000.4.4f1
+- **Unity:** 6000.4.4f1 (URP)
 - **Input:** Unity Input System, project set to *Active Input Handling = Both*
 - **Navigation:** no NavMesh — a waypoint graph with A* lives in `EnemyNavigation`
-- **Scene:** `Assets/Scenes/AshWoods_Stage1_Playground.unity`
+- **Scenes (build order):** `AshWoods_Menu.unity` (title) -> `AshWoods_Facility.unity` (the level).
+  `AshWoods_House.unity` is the earlier level, frozen and out of the build.
+- **Builds:** `Ashen Woods > Build` only - versioned folders `Builds/AshenWoods_<SemVer>` with `CHANGELOG.txt`
+  (see AGENTS.md, "Player builds").
 
 The full design brief this project is built against is at the bottom of this file.
 
@@ -22,7 +25,14 @@ The full design brief this project is built against is at the bottom of this fil
 | 5 | Sound events, enemy hearing, investigate state, stealth noise, hiding noise | Done |
 | 6 | Breaker puzzle, objective chain (key → closet → crowbar → breaker → exit), front door, objective HUD | Done |
 | 7 | Death screen, restart, completed screen, flashlight + batteries, dark house until the breaker, procedural sound, threat cues, enemy drags you out of a hiding place it saw you enter | Done |
-| 8 | Integration pass, playtest and fixes | Not started |
+| 8 | Integration pass, playtest and fixes; throwable distractions (bottles, tin cans) | In progress - see below |
+| 9 | Sound and light polish: floor-aware hearing and muffling, directional enemy steps, quiet player steps, shadowed lamps, real flashlight, post-processing, furniture at true scale, skirting | Built, awaiting playtest |
+| 10 | Interface style: Inter font, one palette, minimal left-column screens and HUD | Built, awaiting playtest |
+| 11 | Playtest balance: stamina, flashlight flash, throw arc, room names, batteries on tables, breaker in the storeroom; playtest 2: flash stun (30 %, 3.5 s), fall-to-floor catch, no red screen | Built, awaiting playtest |
+| 12 | Atmosphere: torch dust, corridor fog, cold grade + grain, chase aberration, faulty lamps, moonlit windows, stains/cracks/mould, cobwebs, camera bob/lean/fear shake, enemy eyes + presence light, flash white-out and ringing; main menu scene (mansion, garden, fountain, gate, moon) | Built, awaiting playtest |
+| - | Facility level (`FacilityBuilder`): sci-fi kit shell, catwalks, Blender props, horror pass, playtest fixes | Played by the owner |
+| 13 | Fixes + checkpoints: sounds prewarmed (catch hitch), enemy climb state (needs a `climb_over` clip), lockers back with costs (holding breath drains stamina, searching enemy may check a locker), checkpoint after every objective (Try Again resumes there) | Built, awaiting playtest |
+| 14 | Longer game loop (facility): torch item, keypad office (code on 3 notes), breakers -> fuel -> generator -> ordered valves -> bay; per-run random code/order/item spots (`RunRandom`, `RandomPlacement`); staff logs + B-7 samples -> 4 endings; security terminal; steam lures; desk hiding; J journal + idle hints; difficulty; enemy look-at + spring bones | Built, logic run through in Play mode by script; not played by hand |
 
 Note: the brief's stages 2 and 3 are merged here (interaction + items + locks are all
 Stage 2 in this repo), so this project's numbering is one behind the brief after Stage 3.
@@ -42,6 +52,10 @@ Ashen Woods > Stages > Stage 4 - Pause Menu And Inventory
 Ashen Woods > Stages > Stage 5 - Sound And Stealth
 Ashen Woods > Stages > Stage 6 - Objectives And Escape
 Ashen Woods > Stages > Stage 7 - Endings, Flashlight And Atmosphere
+Ashen Woods > Stages > Stage 8 - Throwable Distractions
+Ashen Woods > Stages > Stage 9 - Sound And Light Polish
+Ashen Woods > Stages > Stage 10 - Interface Style
+Ashen Woods > Stages > Stage 11 - Gameplay Balance
 
 Ashen Woods > Tuning > Apply Tuned Stealth Values
 Ashen Woods > Diagnostics > Log House Layout / Log House Overlap Check
@@ -120,7 +134,15 @@ will be cut into a real level later.
 - **Flashlight.** F toggles a spot light on the camera (`PlayerFlashlight`). It drains in
   about three minutes, flickers below 15 % and dies at 0. Three `BatteryPickup`s in the
   house (kitchen counter, bedroom bed, bathroom floor) add 45 % each. Battery bar bottom-left.
-- **Sound.** All sounds are synthesised in code (`ProceduralAudio`), no audio files.
+- **Sound.** Recorded CC0 clips by Kenney (Impact Sounds, RPG Audio; licence in
+  `Assets/Audio/KENNEY_LICENSE.txt`) live in `Assets/Audio/Resources/Sounds/<SoundName>/`:
+  wooden footsteps, enemy steps, door creaks, cloth, metal, glass and tin. `ProceduralAudio.Get`
+  picks a random variant from that folder and falls back to the synthesised placeholder for
+  anything without recordings (heartbeat, sting, notice, power-on, death hit). Drop more
+  clips into a folder to add variants. The whole mix was turned down (heartbeat 0.9 -> 0.3,
+  softer and only above 30 % danger); Stage 7 moves existing scene values that still hold
+  the old defaults.
+- **Sound (original note).** All sounds were synthesised in code (`ProceduralAudio`), no audio files.
   `NoiseSoundPlayer` plays every NoiseSystem event as a 3D sound, so the player hears exactly
   what the enemy hears. `EnemyFootstepAudio` gives the enemy heavy steps audible through walls.
 - **Threat cues.** `ThreatFeedback` darkens the screen edges as an enemy gets close or starts
@@ -130,6 +152,52 @@ will be cut into a real level later.
   looking straight at you, no longer works: it walks to the wardrobe and drags you out.
 - **Quiet Console.** Gameplay trace logs go through `GameLog` and are off by default; turn
   them on with *Diagnostics > Verbose Gameplay Logs*. Warnings and errors always show.
+
+## Stage 8 - integration pass (in progress)
+
+Found by driving Play mode in the house scene from the assistant (Unity MCP), with a probe
+logging the enemy's position and patrol index every second:
+
+- **Spawn catch in 15 s.** The patrol loop ran study -> living room -> foyer centre, which is
+  0.2 m from the player start. The loop now runs upstairs first (study, bathroom, landing,
+  bedroom) and reaches the foyer last; an idle player is found after about 45 s instead.
+- **Bed in the bedroom doorway.** The bed filled the landing doorway down to a 0.7 m gap, so
+  the enemy jammed there and never patrolled the bedroom. It now stands against the north
+  wall (moved once, only if it is still where the builder first put it).
+- **Shortcuts across the stairwell.** Route shortening accepted straight lines that crossed
+  open air (top of the stairs straight to the pantry), and the enemy jammed on the ramp edge.
+  Shortcuts and last legs now need floor under the whole line (`HasFloorAlong`).
+- **Doors on patrol.** The enemy opens closed, unlocked doors on patrol too, not only while
+  chasing/searching, so a door shut across its loop no longer stalls it.
+- The full objective chain (key -> closet -> crowbar -> three switches -> front door) was
+  played through by calling each interactable in order and ends in the escape screen.
+- **Noises on the wrong floor.** A destination is now snapped to the floor under it, and the
+  nearest-node fallback weighs height four times, so a noise in the foyer no longer sends
+  the enemy to the bedroom right above it.
+
+### Throwable distractions
+
+`Stage 8 - Throwable Distractions` (also run by every earlier stage item and by *Build Or
+Update The House*) adds:
+
+- **Five glass bottles** (foyer sideboard next to the start, living-room crate, kitchen
+  counter, bathroom floor, study by the breaker) and **two tin cans** (hall, bedroom).
+- **E** picks one up into the left hand (one at a time). **Hold RMB or G** to wind up -
+  a tap is a gentle lob (5 m/s), 0.7 s is a full throw (14 m/s) - and release to throw.
+  Not possible from inside a hiding place.
+- A bottle that lands hard (>= 4 m/s) **shatters**: loudness 0.75, about 12 m in the open,
+  plus glass flecks. A tin can **clatters** (0.55, about 9 m) and can be picked up again.
+  A soft landing is only 0.18.
+- The enemy hears the landing like any other noise and walks over to **investigate** that
+  spot. It cannot be distracted mid-chase.
+- HUD line above the battery bar: `RMB / G  THROW BOTTLE`, with a charge bar while winding up.
+
+Runtime pieces: `ThrowableItem` (+ `ShardBurst`) in Interaction, `IThrowableHolder`, `PlayerThrower`
+on the player, `ThrowableUI`, `NoiseCategory.Impact`, and the `Shatter` / `Clatter` sounds.
+
+Checked in Play mode by script: pickup, "hands full" prompt, HUD text, a full-charge bottle
+shattering 0.2 s after release, the enemy investigating from the floor above, and a can
+landing 6.5 m away and being picked up again. Not checked by hand with mouse and keyboard.
 
 ## Using your own enemy model
 
@@ -162,6 +230,7 @@ so a hand-made controller works too. Root motion is always off - the AI moves th
 | Space | Jump |
 | E | Use / pick up / hide / leave hiding place |
 | F | Flashlight on / off |
+| RMB / G (hold, release) | Throw the bottle or can in your hand |
 | R | Restart (on the death and completed screens) |
 | Esc | Pause menu |
 | Tab | Satchel |
@@ -170,24 +239,45 @@ so a hand-made controller works too. Root motion is always off - the AI moves th
 
 ### The rebuilt house - `Assets/Scenes/AshWoods_House.unity`
 
-Two storeys, eight rooms, one staircase. Ground floor top at y = 0, first floor top at
-y = 3.2, ceiling at y = 6.0.
+Layout v2: an original 24 x 16 m, two-storey house with sixteen rooms and two staircases
+(ground floor top y = 0, first floor top y = 3.2, ceiling y = 6.0). The plan is two letter
+maps on a 2 m grid in `HouseBuilder.Layout.cs` - north is the top row, the front door is in
+the south wall:
 
-| Floor | Room | Interior | Entered from | Notes |
-| --- | --- | --- | --- | --- |
-| Ground | Living room | x -6.0..0.2, z -2.0..1.8 | Foyer (door), kitchen | Crouch tunnel with the **iron key**, wardrobe-free cover, breaker is upstairs |
-| Ground | Kitchen | x 0.4..6.0, z -2.0..1.8 | Living room, hall | Pantry in the north-east corner (x 4.3..6.0, z -2.0..-0.2) behind the **locked door** and the **crowbar** |
-| Ground | Foyer | x -6.0..0.2, z 2.0..6.0 | Front door, living room, hall | **Player start**, the **front door / escape exit** in the south wall |
-| Ground | Hall | x 0.4..6.0, z 2.0..6.0 | Foyer, kitchen | Stairs rise east along the south wall |
-| First | Study | x -6.0..0.2, z -2.0..1.8 | Bedroom, bathroom | **Enemy start**, **breaker panel** on the north wall, wardrobe |
-| First | Bathroom | x 0.4..6.0, z -2.0..1.8 | Study, landing | Empty room, a dead end for the player |
-| First | Bedroom | x -6.0..0.2, z 2.0..6.0 | Study, landing | Bed and a wardrobe |
-| First | Landing | x 0.4..6.0, z 2.0..6.0 | Bedroom, bathroom, stairs | Stairwell hole x 1.4..5.0, z 5.0..6.0, rails on two sides |
+```
+GROUND             FIRST FLOOR
+KKKKHHDDDDUU       MMMMNNRRRRAA     K kitchen  P pantry (locked: crowbar)  H back hall
+KKKKH+DDDDUU       MMMMNhRRRRAA     + back stair  D dining  U utility  C corridor
+KKKKH+DDDDUU       MMMMNhRRRRAA     L living (crouch tunnel: iron key)  F foyer (start, exit)
+PPCCCCCCCCCC       EEEEEEEEEEEE     * main stair  B library  T toilet
+LLLLLFF*BBBB       GGGGOOOhQQQQ     M master bedroom (wardrobe)  N linen  R study (breaker)
+LLLLLFF*BBBB       GGGGOOOhQQQQ     A storeroom (enemy wakes)  E upper corridor  h stairwell
+LLLLLFFFBBTT       GGGGOOOOQQWW     G guest bedroom (wardrobe)  O playroom  Q bathroom
+LLLLLFFFBBTT       GGGGOOOOQQWW     W small room
+```
 
-Door openings are 1.6 m wide (1.5 m leaf) and 2.1 m tall, cut out of one wall; the first
-floor uses 2.0 m open doorways. The stair is a 41.6 degree ramp collider with its treads
-only drawn, so the enemy's height probes pass over it. Both floors form a loop, and the
-patrol route crosses the stairs, so hiding upstairs is not automatically safe.
+- Walls are generated on every boundary between two rooms; doorways (1.6 m, 2.1 m tall),
+  the pantry door, the living-room door and the 1.5 m front-door hole are cut out of them.
+- Both stairs land on the upper corridor, so each floor is a loop with two ways between
+  floors. A stair is a 38.7 degree ramp collider with drawn treads, walled in on the ground
+  floor so nothing can walk under it, and its openings run to the ceiling.
+- Navigation: one node per walkable cell (191 with the ramp points), and an 18-point patrol
+  that sweeps the upper floor first, comes down the main stair into the foyer about 80 s in,
+  circles the ground floor and climbs the back stair (a lap is about three minutes).
+- **Dressing:** worn wallpaper, old plank floors, plaster ceilings, tiled kitchen, toilet
+  and bathroom, rugs, and ~55 pieces of CC0 Poly Haven furniture and decor (sofa, rocking
+  chair, grandfather clock, ornate mirror, gothic cabinets, dining set, desks, shelves,
+  crates, pictures, oil lamps). Wardrobes have open doors and a cornice; hiding beds have
+  posts, a footboard, a pillow and a blanket. All of it is built by `HouseBuilder.Dressing.cs`.
+- **Hiding places (11):** wardrobes in the master and guest bedrooms (Stage 3) plus the
+  kitchen, utility room, foyer (next to the exit), library, study and small room, and three
+  beds to hide under (master, guest, playroom). Under a bed the camera drops to 0.12 m and
+  you look out between the legs; *E* crawls back out. A bed is a `HidingSpot` with an
+  `eyeHeight`, so any new hiding prop only needs that field. Hiding while the enemy watches
+  still gets you dragged out - from under a bed too.
+- A scene that still has the first 12 x 8 m house is upgraded by *Build Or Update The House*:
+  the old House geometry, spare batteries, throwables, nodes and patrol points are replaced;
+  doors, key, crowbar, breaker, wardrobes, enemy, exit and player move to the new anchors.
 
 ### The original playground (legacy)
 

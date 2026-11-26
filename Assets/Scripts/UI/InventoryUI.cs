@@ -24,7 +24,7 @@ namespace AshenWoods.UI
 
         [Header("Text")]
         [Tooltip("Shown while the player carries nothing.")]
-        [SerializeField] private string emptyMessage = "Nothing yet. Keys open locked doors.";
+        [SerializeField] private string emptyMessage = "Пока пусто. Ключи открывают запертые двери.";
 
         /// <summary>Rebuilds the list. Called by GameMenuController each time the screen opens.</summary>
         public void Refresh()
@@ -41,14 +41,14 @@ namespace AshenWoods.UI
 
             if (keyHolder == null)
             {
-                listText.text = "No key holder on the player.";
+                listText.text = "У игрока нет места для ключей.";
                 return;
             }
 
             IReadOnlyList<string> keys = keyHolder.Keys;
             if (keys.Count == 0)
             {
-                listText.text = emptyMessage;
+                listText.text = emptyMessage + SideLines(keys);
                 return;
             }
 
@@ -60,10 +60,22 @@ namespace AshenWoods.UI
                     builder.Append('\n');
                 }
 
-                builder.Append("- ").Append(ReadableName(keys[i]));
+                builder.Append("·   ").Append(ReadableName(keys[i]));
             }
 
-            listText.text = builder.ToString();
+            listText.text = builder.ToString() + SideLines(keys);
+        }
+
+        /// <summary>The optional goals (staff logs, B-7 samples), when the level has any.</summary>
+        private static string SideLines(IReadOnlyList<string> keys)
+        {
+            if (AshenWoods.World.SideProgress.LogsTotal == 0)
+            {
+                return string.Empty;
+            }
+
+            return "\n\nПрочитано журналов   " + AshenWoods.World.SideProgress.LogsRead + "/" + AshenWoods.World.SideProgress.LogsTotal +
+                   "\nОбразцы B-7   " + AshenWoods.World.SideProgress.CountSamples(keys) + "/" + AshenWoods.World.SideProgress.SamplesTotal;
         }
 
         /// <summary>
@@ -74,13 +86,13 @@ namespace AshenWoods.UI
         {
             if (string.IsNullOrEmpty(keyId))
             {
-                return "Unknown key";
+                return "Неизвестный ключ";
             }
 
             string spaced = keyId.Replace('_', ' ').Trim();
             if (spaced.Length == 0)
             {
-                return "Unknown key";
+                return "Неизвестный ключ";
             }
 
             StringBuilder builder = new StringBuilder(spaced.Length);

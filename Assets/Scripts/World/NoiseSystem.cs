@@ -27,6 +27,20 @@ namespace AshenWoods.World
         [Tooltip("Anything quieter than this is dropped, so tiny sounds do not wake the level.")]
         [SerializeField, Range(0f, 0.5f)] private float minimumLoudness = 0.05f;
 
+        [Header("Storeys")]
+        [Tooltip("Height that separates the two storeys for sound and for lamp culling (see " +
+                 "Acoustics). 2.6 suits the house. A level of tall halls with catwalks in the open " +
+                 "has no storeys: set it far above the roof.")]
+        [SerializeField] private float storeySplitHeight = Acoustics.HouseStoreySplit;
+
+        [Header("Echo")]
+        [Tooltip("Big, bare halls: a hard impact (a thrown bottle or can landing) rings through the " +
+                 "whole level. Every listener hears an echoing noise at any distance, through walls.")]
+        [SerializeField] private bool impactsEcho;
+
+        [Tooltip("Impacts quieter than this (a soft bump) never echo.")]
+        [SerializeField, Range(0f, 1f)] private float echoMinimumLoudness = 0.4f;
+
         [Header("Debug")]
         [Tooltip("Logs every noise with its category and radius. The fastest way to check that " +
                  "walking, sprinting and doors report what you expect.")]
@@ -67,7 +81,11 @@ namespace AshenWoods.World
             }
 
             Instance = this;
+            Acoustics.StoreySplit = storeySplitHeight;
         }
+
+        /// <summary>True when hard impacts ring through this whole level.</summary>
+        public bool ImpactsEcho => impactsEcho;
 
         private void OnDestroy()
         {
@@ -100,7 +118,8 @@ namespace AshenWoods.World
         /// Returns false when there is no NoiseSystem, or when the noise was too quiet to matter.
         /// </summary>
         public static bool Emit(
-            Vector3 position, NoiseCategory category, float loudness, UnityEngine.Object source = null)
+            Vector3 position, NoiseCategory category, float loudness, UnityEngine.Object source = null,
+            bool echoes = false)
         {
             if (Instance == null)
             {
@@ -115,11 +134,16 @@ namespace AshenWoods.World
                 return false;
             }
 
-            return Instance.Raise(position, category, loudness, source);
+            return Instance.Raise(position, category, loudness, source, echoes);
         }
 
-        /// <summary>Raises a noise. Public so custom scripts can call it through the instance too.</summary>
-        public bool Raise(Vector3 position, NoiseCategory category, float loudness, UnityEngine.Object source = null)
+        /// <summary>
+        /// Raises a noise. Public so custom scripts can call it through the instance too.
+        /// 'echoes' asks for a noise that carries through the whole level; it only does so in a
+        /// level whose halls echo (see Impacts Echo), and hard impacts echo there on their own.
+        /// </summary>
+        public bool Raise(Vector3 position, NoiseCategory category, float loudness, UnityEngine.Object source = null,
+            bool echoes = false)
         {
             float clamped = Mathf.Clamp01(loudness);
             if (clamped < minimumLoudness)
@@ -127,7 +151,9 @@ namespace AshenWoods.World
                 return false;
             }
 
-            NoiseEvent noise = new NoiseEvent(position, category, clamped, clamped * maxRadius, source);
+            bool carries = impactsEcho && clamped >= echoMinimumLoudness
+                           && (echoes || category == NoiseCategory.Impact);
+            NoiseEvent noise = new NoiseEvent(position, category, clamped, clamped * maxRadius, source, carries);
 
             if (logNoises)
             {
@@ -189,6 +215,8 @@ namespace AshenWoods.World
                     return new Color(0.65f, 0.5f, 0.95f);
                 case NoiseCategory.Other:
                     return new Color(0.8f, 0.8f, 0.8f);
+                case NoiseCategory.Impact:
+                    return new Color(0.95f, 0.25f, 0.55f);
                 default:
                     return new Color(0.55f, 0.85f, 0.45f);
             }

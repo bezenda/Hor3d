@@ -23,7 +23,8 @@ namespace AshenWoods.GameManagement
     /// Stage 7: the beginning and the two endings of a run.
     ///
     ///   start   - fade in from black;
-    ///   caught  - the player is dragged out of play, the screen bleeds red, then the death
+    ///   caught  - the player is pulled out of play and falls (CaughtCameraFall), the screen
+    ///             fades to black, then the death
     ///             screen offers Try Again (reload the scene) or Quit;
     ///   escaped - the objective chain completes (or the front door is forced), the screen fades
     ///             to black, then the completed screen shows the time and offers Play Again / Quit.
@@ -50,6 +51,13 @@ namespace AshenWoods.GameManagement
         [SerializeField] private Button completedRestartButton;
         [SerializeField] private Button completedQuitButton;
 
+        [Tooltip("Back to the title screen (death screen keeps the checkpoint for Continue).")]
+        [SerializeField] private Button deathMainMenuButton;
+        [SerializeField] private Button completedMainMenuButton;
+
+        [Tooltip("Line under the caught title: why it found you, and what to try next time.")]
+        [SerializeField] private Text deathSubtitle;
+
         [Header("Game")]
         [SerializeField] private PlayerEnemyTarget player;
         [SerializeField] private PlayerInputReader input;
@@ -60,15 +68,26 @@ namespace AshenWoods.GameManagement
 
         [Header("Timing (real seconds)")]
         [SerializeField, Min(0f)] private float fadeInSeconds = 1.5f;
-        [SerializeField, Min(0f)] private float deathDelaySeconds = 1.6f;
+        [SerializeField, Min(0f)] private float deathDelaySeconds = 3.2f;
+
+        [Tooltip("Seconds of the death delay before the fade starts, so the fall to the floor is seen.")]
+        [SerializeField, Min(0f)] private float deathFadeHoldSeconds = 1.4f;
         [SerializeField, Min(0f)] private float escapeDelaySeconds = 2.2f;
 
         [Header("Colours")]
-        [SerializeField] private Color deathFadeColor = new Color(0.25f, 0f, 0f, 0.9f);
+        [SerializeField] private Color deathFadeColor = new Color(0f, 0f, 0f, 1f);
         [SerializeField] private Color escapeFadeColor = new Color(0f, 0f, 0f, 1f);
 
         [Header("Keys")]
         [SerializeField] private Key restartKey = Key.R;
+
+        [Header("Opening")]
+        [Tooltip("First line of the card shown at the start of a fresh run. Empty: no card.")]
+        [SerializeField] private string introPlace = "Исследовательская станция «Пепельный лес»";
+
+        [TextArea]
+        [SerializeField] private string introSituation =
+            "Ты приходишь в себя на полу каморки уборщика. Света нет. Где-то в здании что-то движется.";
 
         public RunState State { get; private set; } = RunState.Playing;
 
@@ -78,6 +97,14 @@ namespace AshenWoods.GameManagement
         private float runSeconds;
         private bool frozen;
         private AudioSource stingerSource;
+
+        // What the player was doing shortly before a catch, for the death screen's advice.
+        private float lastHidden = -100f;
+        private float lastLit = -100f;
+        private float lastExhausted = -100f;
+        private AshenWoods.Player.PlayerHidingController hiding;
+        private PlayerFlashlight torch;
+        private PlayerMotor motor;
 
         private void Awake()
         {
@@ -116,10 +143,33 @@ namespace AshenWoods.GameManagement
             stingerSource.spatialBlend = 0f;
             stingerSource.ignoreListenerPause = true; // Heard over a frozen game.
 
+            if (GetComponent<CheckpointSystem>() == null)
+            {
+                gameObject.AddComponent<CheckpointSystem>();
+            }
+
+            if (GetComponent<AshenWoods.UI.JournalKey>() == null)
+            {
+                gameObject.AddComponent<AshenWoods.UI.JournalKey>();
+            }
+
             Wire(deathRetryButton, Restart);
-            Wire(completedRestartButton, Restart);
+            Wire(completedRestartButton, RestartFresh);
             Wire(deathQuitButton, Quit);
             Wire(completedQuitButton, Quit);
+            Wire(deathMainMenuButton, MainMenuKeepCheckpoint);
+            Wire(completedMainMenuButton, MainMenuFresh);
+            foreach (Button button in new[] { deathMainMenuButton, completedMainMenuButton })
+            {
+                if (button != null)
+                {
+                    button.gameObject.SetActive(SceneFlow.HasMainMenu);
+                }
+            }
+
+            hiding = FindAnyObjectByType<AshenWoods.Player.PlayerHidingController>();
+            torch = FindAnyObjectByType<PlayerFlashlight>();
+            motor = FindAnyObjectByType<PlayerMotor>();
 
             SetActive(deathPanel, false);
             SetActive(completedPanel, false);
@@ -176,6 +226,15 @@ namespace AshenWoods.GameManagement
             runStartTime = Time.time;
             fadeInRemaining = fadeInSeconds;
             SetFade(Color.black, fadeInSeconds > 0f ? 1f : 0f);
+
+            // Under the black fade-in: no first-play disk read/decode later (the catch used to hitch).
+            SoundBank.Prewarm();
+
+            // A fresh run opens with where you are; a checkpoint reload goes straight back to it.
+            if (!CheckpointSystem.HasCheckpoint && !AshenWoods.UI.IntroCard.ShownThisRun && !string.IsNullOrEmpty(introPlace))
+            {
+                AshenWoods.UI.IntroCard.Show(introPlace, introSituation);
+            }
         }
 
         private void Update()
@@ -186,14 +245,15 @@ namespace AshenWoods.GameManagement
             {
                 case RunState.Playing:
                     TickFadeIn(deltaTime);
+                    WatchPlayer();
                     break;
 
                 case RunState.Dying:
-                    TickEnding(deltaTime, deathDelaySeconds, deathFadeColor, RunState.Dead, deathPanel, deathRetryButton);
+                    TickEnding(deltaTime, deathDelaySeconds, deathFadeHoldSeconds, deathFadeColor, RunState.Dead, deathPanel, deathRetryButton);
                     break;
 
                 case RunState.Escaping:
-                    TickEnding(deltaTime, escapeDelaySeconds, escapeFadeColor, RunState.Won, completedPanel, completedRestartButton);
+                    TickEnding(deltaTime, escapeDelaySeconds, 0f, escapeFadeColor, RunState.Won, completedPanel, completedRestartButton);
                     break;
 
                 case RunState.Dead:
@@ -201,7 +261,8 @@ namespace AshenWoods.GameManagement
                     Keyboard keyboard = Keyboard.current;
                     if (keyboard != null && keyboard[restartKey].wasPressedThisFrame)
                     {
-                        Restart();
+                        if (State == RunState.Won) RestartFresh();
+                        else Restart();
                     }
 
                     break;
@@ -210,6 +271,50 @@ namespace AshenWoods.GameManagement
 
         // ---------------------------------------------------------------- endings
 
+        private void WatchPlayer()
+        {
+            float now = Time.time;
+            if (hiding != null && hiding.IsHidden) lastHidden = now;
+            if (torch != null && torch.IsOn) lastLit = now;
+            if (motor != null && motor.IsExhausted) lastExhausted = now;
+        }
+
+        /// <summary>
+        /// One honest sentence about what most likely gave the player away, with what to try next. Read from what
+        /// the player was doing in the last seconds, so it never blames something that did not happen.
+        /// </summary>
+        private string DeathAdvice()
+        {
+            float now = Time.time;
+            switch (AshenWoods.Enemy.EnemyBrain.LastCatchCause)
+            {
+                case AshenWoods.Enemy.CatchCause.WatchedHide:
+                    return "Оно видело, как ты прячешься. Прячься, только когда оно не смотрит, " +
+                           "а если заметило — вылезай и беги, пока оно стоит.";
+                case AshenWoods.Enemy.CatchCause.HeardBreath:
+                    return "Оно стояло у дверцы и слышало твоё дыхание. Увидишь «Оно слышит тебя» — держи Shift или выбей дверцу (E) и беги.";
+                case AshenWoods.Enemy.CatchCause.CheckedHide:
+                    return "Оно проверяло укрытия и услышало дыхание. Держи Shift, пока оно не отойдёт, или выбей дверцу (E) и беги.";
+            }
+
+            if (now - lastExhausted < 4f)
+            {
+                return "Силы кончились на бегу. Беги короткими рывками и останавливайся, пока выносливость не на нуле.";
+            }
+
+            if (now - lastLit < 2f)
+            {
+                return "Тебя выдал фонарь. Свет оно видит гораздо раньше, чем тебя.";
+            }
+
+            if (now - lastHidden < 3f)
+            {
+                return "Оно нашло твоё укрытие. Не прячься у него на глазах и держи Shift, когда оно рядом.";
+            }
+
+            return "Оно охотится на звук. Иди шагом, пригибайся (Ctrl) и бросай предметы (ЛКМ), чтобы увести его.";
+        }
+
         private void OnCaught(Vector3 enemyPosition)
         {
             if (State != RunState.Playing)
@@ -217,8 +322,22 @@ namespace AshenWoods.GameManagement
                 return;
             }
 
+            if (deathSubtitle != null)
+            {
+                deathSubtitle.text = DeathAdvice();
+            }
+
+            if (deathRetryButton != null)
+            {
+                Text retryLabel = deathRetryButton.GetComponentInChildren<Text>(true);
+                if (retryLabel != null)
+                {
+                    retryLabel.text = CheckpointSystem.HasCheckpoint ? "Вернуться к сохранению" : "Попробовать снова";
+                }
+            }
+
             BeginEnding(RunState.Dying);
-            stingerSource.PlayOneShot(ProceduralAudio.Get(PlaceholderSound.DeathHit), 1f);
+            stingerSource.PlayOneShot(SoundBank.Get(GameSound.DeathHit), 0.6f);
             GameLog.Info("[Flow] Caught. Showing the death screen.", this);
         }
 
@@ -263,11 +382,13 @@ namespace AshenWoods.GameManagement
         }
 
         private void TickEnding(
-            float deltaTime, float duration, Color color, RunState next, GameObject panel, Button focus)
+            float deltaTime, float duration, float hold, Color color, RunState next, GameObject panel, Button focus)
         {
             stateTimer += deltaTime;
             float progress = duration <= 0f ? 1f : Mathf.Clamp01(stateTimer / duration);
-            SetFade(color, color.a * Mathf.SmoothStep(0f, 1f, progress));
+            hold = Mathf.Clamp(hold, 0f, duration * 0.95f);
+            float fadeProgress = duration <= 0f ? 1f : Mathf.Clamp01((stateTimer - hold) / (duration - hold));
+            SetFade(color, color.a * Mathf.SmoothStep(0f, 1f, fadeProgress));
 
             if (progress < 1f)
             {
@@ -278,15 +399,15 @@ namespace AshenWoods.GameManagement
 
             if (next == RunState.Won && completedDetail != null)
             {
-                completedDetail.text = "You got out in " + FormatTime(runSeconds) + ".";
+                completedDetail.text = FormatDuration(runSeconds) + " в темноте." + EndingLines();
             }
 
             SetActive(panel, true);
             Freeze();
 
-            if (focus != null && EventSystem.current != null)
+            if (focus != null)
             {
-                EventSystem.current.SetSelectedGameObject(focus.gameObject);
+                AshenWoods.UI.UiButtonFeel.SelectSilently(focus.gameObject);
             }
         }
 
@@ -307,11 +428,75 @@ namespace AshenWoods.GameManagement
             Time.timeScale = 0f;
             AudioListener.pause = true;
             PlayerInputReader.ApplyCursorLock(false);
+            AshenWoods.UI.HudVisibility.Set(false);
         }
 
         // ---------------------------------------------------------------- buttons
 
-        /// <summary>Reloads the current level from the start.</summary>
+        /// <summary>
+        /// The ending is the escape plus what the player chose to do on the way: every staff log read (the truth),
+        /// all three B-7 samples carried out (the evidence), both, or neither.
+        /// </summary>
+        private static string EndingLines()
+        {
+            if (AshenWoods.World.SideProgress.LogsTotal == 0)
+            {
+                return string.Empty;
+            }
+
+            PlayerKeyHolder keys = FindAnyObjectByType<PlayerKeyHolder>();
+            int samples = keys != null ? AshenWoods.World.SideProgress.CountSamples(keys.Keys) : 0;
+            bool evidence = samples >= AshenWoods.World.SideProgress.SamplesTotal;
+            bool truth = AshenWoods.World.SideProgress.AllLogsRead;
+
+            string ending;
+            if (evidence && truth)
+            {
+                ending = Heading("Вся правда") + "Ты знаешь, что Хейл создала там внизу, и доказательства у тебя в кармане. Теперь им придётся слушать.";
+            }
+            else if (evidence)
+            {
+                ending = Heading("Улики") + "В кармане звякают три запаянных образца B-7. Кто-то захочет узнать, откуда они.";
+            }
+            else if (truth)
+            {
+                ending = Heading("Свидетель") + "Все журналы прочитаны. Ты знаешь, что такое B-7, — и знаешь, что тебе никто не поверит.";
+            }
+            else
+            {
+                ending = Heading("Спасение") + "Ты не знаешь, что это было. И не хочешь знать.";
+            }
+
+            return "\n\n" + ending +
+                   "\n\nПрочитано журналов: " + AshenWoods.World.SideProgress.LogsRead + " из " + AshenWoods.World.SideProgress.LogsTotal +
+                   "      Образцы B-7: " + samples + " из " + AshenWoods.World.SideProgress.SamplesTotal;
+        }
+
+        private static string Heading(string title)
+        {
+            return "<color=#" + AshenWoods.UI.UiTheme.AccentHex + ">" + title + "</color>\n";
+        }
+
+        private void MainMenuKeepCheckpoint()
+        {
+            frozen = false;
+            SceneFlow.LoadMainMenu(true);
+        }
+
+        private void MainMenuFresh()
+        {
+            frozen = false;
+            SceneFlow.LoadMainMenu(false);
+        }
+
+        /// <summary>Reloads the level from the very beginning (after an escape): the checkpoint is dropped.</summary>
+        public void RestartFresh()
+        {
+            CheckpointSystem.Clear();
+            Restart();
+        }
+
+        /// <summary>Reloads the current level; CheckpointSystem puts the run back at the last checkpoint.</summary>
         public void Restart()
         {
             Time.timeScale = 1f;
@@ -375,6 +560,40 @@ namespace AshenWoods.GameManagement
             if (target != null)
             {
                 target.SetActive(active);
+            }
+        }
+
+        /// <summary>"23 минуты 41 секунда", "1 минута 5 секунд", "48 секунд".</summary>
+        private static string FormatDuration(float seconds)
+        {
+            int total = Mathf.Max(0, Mathf.FloorToInt(seconds));
+            int minutes = total / 60;
+            int rest = total % 60;
+            string secondsText = rest + " " + Plural(rest, "секунда", "секунды", "секунд");
+            if (minutes == 0)
+            {
+                return secondsText;
+            }
+
+            return minutes + " " + Plural(minutes, "минута", "минуты", "минут") + " " + secondsText;
+        }
+
+        /// <summary>Russian noun form for a count: 1 минута, 2 минуты, 5 минут, 21 минута.</summary>
+        private static string Plural(int count, string one, string few, string many)
+        {
+            int n = Mathf.Abs(count) % 100;
+            if (n >= 11 && n <= 14)
+            {
+                return many;
+            }
+
+            switch (n % 10)
+            {
+                case 1: return one;
+                case 2:
+                case 3:
+                case 4: return few;
+                default: return many;
             }
         }
 
